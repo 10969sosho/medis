@@ -3,14 +3,21 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, UserPlus, FileText, Users, ListOrdered,
-  Pill, CreditCard, Bell, BarChart2, Stethoscope, ChevronRight
+  Pill, CreditCard, Bell, BarChart2, Stethoscope, ChevronRight, ChevronDown
 } from 'lucide-react';
+import { useState } from 'react';
 
 const nav = [
   { href: '/', icon: LayoutDashboard, label: 'Dashboard', section: null },
   { href: null, icon: null, label: 'MODUL INTI', section: true },
-  { href: '/pendaftaran', icon: UserPlus, label: 'Pendaftaran' },
-  { href: '/rekam-medis', icon: FileText, label: 'Rekam Medis' },
+  { href: '/master-pasien', icon: UserPlus, label: 'Master Pasien' },
+{ href: '/master-dokter', icon: Stethoscope, label: 'Master Dokter' },
+  { href: '/rekam-medis', icon: FileText, label: 'Rekam Medis', submenu: [
+    { href: '/rekam-medis/ibu/', label: 'Rekam Medis Ibu' },
+    { href: '/rekam-medis/anak/', label: 'Rekam Medis Anak' },
+    { href: '/rekam-medis/spa/', label: 'Mom & Baby Spa' },
+    { href: '/rekam-medis/umum/', label: 'Rekam Medis Umum' },
+  ] },
   { href: '/riwayat', icon: Users, label: 'Riwayat Pasien' },
   { href: null, icon: null, label: 'OPERASIONAL', section: true },
   { href: '/antrian', icon: ListOrdered, label: 'Antrian' },
@@ -24,6 +31,7 @@ const nav = [
 
 export default function Sidebar() {
   const path = usePathname();
+  const [openRmSubmenu, setOpenRmSubmenu] = useState(true);
 
   return (
     <aside className="w-64 min-h-screen bg-slate-900 text-slate-300 flex flex-col flex-shrink-0">
@@ -51,8 +59,61 @@ export default function Sidebar() {
             );
           }
           if (!item.href || !item.icon) return null;
+
           const Icon = item.icon;
           const active = path === item.href || (item.href !== '/' && path.startsWith(item.href));
+
+          // If item has submenu (Rekam Medis)
+          if ('submenu' in item) {
+            const submenu = item.submenu as unknown as Array<{ href: string; label: string }>;
+            return (
+              <div key={item.href} className="space-y-1">
+                <div className="flex items-center justify-between rounded-lg hover:bg-slate-800 transition-all">
+                  <Link
+                    href={item.href}
+                    className={`flex-1 flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all ${
+                      active
+                        ? 'bg-teal-500/15 text-teal-400 font-semibold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Icon size={16} className={active ? 'text-teal-400' : 'text-slate-500'} />
+                    <span>{item.label}</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setOpenRmSubmenu(!openRmSubmenu)}
+                    className="p-2 text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    {openRmSubmenu ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  </button>
+                </div>
+
+                {openRmSubmenu && (
+                  <div className="pl-7 pr-2 py-1 space-y-1 bg-slate-950/40 rounded-xl my-1 border border-slate-800/80">
+                    {submenu.map((sub, si) => {
+                      const subActive = path === sub.href || path.startsWith(sub.href.replace(/\/$/, ''));
+                      return (
+                        <Link
+                          key={si}
+                          href={sub.href}
+                          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                            subActive
+                              ? 'bg-teal-500/15 text-teal-300 font-semibold'
+                              : 'text-slate-400 hover:text-teal-300 hover:bg-slate-800'
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${subActive ? 'bg-teal-400' : 'bg-teal-500/70'}`} />
+                          <span>{sub.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
           return (
             <Link
               key={item.href}

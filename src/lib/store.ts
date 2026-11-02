@@ -8,9 +8,10 @@ const KEYS = {
   queue: 'klinik_queue',
   transactions: 'klinik_transactions',
   ancRecords: 'klinik_anc',
+  doctors: 'klinik_doctors',
 };
 
-import type { Patient, Visit, Drug, QueueItem, Transaction, ANCRecord } from './types';
+import type { Patient, Visit, Drug, QueueItem, Transaction, ANCRecord, Doctor } from './types';
 
 // --- Seed Data ---
 const seedPatients: Patient[] = [
@@ -24,8 +25,10 @@ const seedPatients: Patient[] = [
 ];
 
 const seedVisits: Visit[] = [
+  // ── Poli Umum ──
   {
-    id: 'v1', patientId: 'p1', date: '2026-09-15T09:30:00', poli: 'Poli Umum', doctorName: 'dr. Andi Saputra, Sp.PD',
+    id: 'v1', patientId: 'p1', date: '2026-09-15T09:30:00', poli: 'Umum', category: 'umum', subCategory: 'Pemeriksaan Umum',
+    doctorName: 'dr. Andi Saputra, Sp.PD',
     subjective: 'Pasien mengeluh demam 3 hari, batuk kering, sakit kepala.',
     objective: JSON.stringify({ td: '130/85', nadi: '92', suhu: '38.5', rr: '20', bb: '72', tb: '170' }),
     assessment: 'ISPA (Infeksi Saluran Pernapasan Akut)',
@@ -37,7 +40,8 @@ const seedVisits: Visit[] = [
     totalBill: 100000, paymentStatus: 'paid', paymentMethod: 'BPJS', controlDate: '2026-09-22', notes: 'Kontrol ulang jika tidak membaik',
   },
   {
-    id: 'v2', patientId: 'p5', date: '2026-09-16T10:00:00', poli: 'Poli Umum', doctorName: 'dr. Andi Saputra, Sp.PD',
+    id: 'v2', patientId: 'p5', date: '2026-09-16T10:00:00', poli: 'Umum', category: 'umum', subCategory: 'Pemeriksaan Umum',
+    doctorName: 'dr. Andi Saputra, Sp.PD',
     subjective: 'Pasien hipertensi rutin kontrol. Kepala pusing, tengkuk kaku.',
     objective: JSON.stringify({ td: '160/100', nadi: '88', suhu: '36.8', rr: '18', bb: '80', tb: '172' }),
     assessment: 'Hipertensi Primer',
@@ -48,7 +52,8 @@ const seedVisits: Visit[] = [
     totalBill: 80000, paymentStatus: 'paid', paymentMethod: 'Asuransi', controlDate: '2026-09-30',
   },
   {
-    id: 'v3', patientId: 'p7', date: '2026-09-17T11:00:00', poli: 'Poli Umum', doctorName: 'dr. Andi Saputra, Sp.PD',
+    id: 'v3', patientId: 'p7', date: '2026-09-17T11:00:00', poli: 'Umum', category: 'umum', subCategory: 'Pemeriksaan Umum',
+    doctorName: 'dr. Andi Saputra, Sp.PD',
     subjective: 'Pasien DM tipe 2 rutin kontrol. GDS terakhir 280. Mudah lelah.',
     objective: JSON.stringify({ td: '140/90', nadi: '80', suhu: '36.9', rr: '18', bb: '85', tb: '168' }),
     assessment: 'Diabetes Mellitus Tipe 2',
@@ -58,16 +63,81 @@ const seedVisits: Visit[] = [
     ],
     totalBill: 75000, paymentStatus: 'paid', paymentMethod: 'BPJS', controlDate: '2026-09-24',
   },
+
+  // ── Poli Ibu ──
   {
-    id: 'v4', patientId: 'p4', date: '2026-09-18T08:30:00', poli: 'Poli KIA', doctorName: 'dr. Rina Sari, Sp.OG',
+    id: 'v4', patientId: 'p4', date: '2026-09-18T08:30:00', poli: 'Ibu', category: 'ibu', subCategory: 'ANC',
+    doctorName: 'dr. Rina Sari, Sp.OG',
     subjective: 'ANC rutin, kehamilan 28 minggu. Tidak ada keluhan bermakna.',
-    objective: JSON.stringify({ td: '110/70', nadi: '82', suhu: '36.7', rr: '18', bb: '65', tb: '160' }),
+    objective: JSON.stringify({ layanan: 'ANC', td: '110/70', nadi: '82', suhu: '36.7', rr: '18', bb: '65', tb: '160', tfu: '27', djj: '152', data: { hamilKe: 'G2P1A0', usiaHamil: '28 minggu', keluhan: 'Tidak ada keluhan' } }),
     assessment: 'Kehamilan Normal G2P1A0',
     icdCode: 'Z34.2', plan: 'Kontrol rutin, Fe + Asam Folat lanjut',
     prescriptions: [
       { drugId: 'd7', drugName: 'Tablet Fe (Besi)', quantity: 30, unit: 'tablet', dosage: '1x1 malam', pricePerUnit: 500 },
     ],
     totalBill: 50000, paymentStatus: 'paid', paymentMethod: 'BPJS', controlDate: '2026-10-02',
+  },
+  {
+    id: 'v5', patientId: 'p2', date: '2026-09-21T09:15:00', poli: 'Ibu', category: 'ibu', subCategory: 'ANC',
+    doctorName: 'dr. Rina Sari, Sp.OG',
+    subjective: 'ANC kehamilan 16 minggu. Berat badan naik, tidak ada preeklampsia.',
+    objective: JSON.stringify({ layanan: 'ANC', td: '112/72', nadi: '86', suhu: '36.6', rr: '18', bb: '56', tb: '158', tfu: '16', djj: '160', data: { hamilKe: 'G1P0A0', usiaHamil: '16 minggu', lila: '24' } }),
+    assessment: 'Kehamilan Normal G1P0A0',
+    icdCode: 'Z34.2', plan: 'Laboratorium Hb/urine, lanjutkan tablet Fe',
+    prescriptions: [
+      { drugId: 'd7', drugName: 'Tablet Fe (Besi)', quantity: 30, unit: 'tablet', dosage: '1x1 malam', pricePerUnit: 500 },
+    ],
+    totalBill: 60000, paymentStatus: 'unpaid', controlDate: '2026-10-05',
+    konsultasiFee: 30000,
+  },
+  {
+    id: 'v6', patientId: 'p4', date: '2026-09-22T10:45:00', poli: 'Ibu', category: 'ibu', subCategory: 'KB',
+    doctorName: 'Bidan Siti Rahma, S.Tr.Keb',
+    subjective: 'Kontrol KB suntik 3 bulan. Tidak ada keluhan, haid teratur.',
+    objective: JSON.stringify({ layanan: 'KB', td: '115/75', nadi: '80', suhu: '36.7', data: { metodeKB: 'Suntik 3 bulan', efekSamping: 'Tidak ada' } }),
+    assessment: 'KB Suntik 3 Bulan (DMPA)',
+    icdCode: 'Z30.9', plan: 'Suntik ulang 3 bulan berikutnya',
+    prescriptions: [],
+    totalBill: 45000, paymentStatus: 'unpaid', controlDate: '2026-12-22',
+    konsultasiFee: 25000,
+  },
+
+  // ── Poli Anak ──
+  {
+    id: 'v7', patientId: 'p3', date: '2026-09-19T09:00:00', poli: 'Anak', category: 'anak', subCategory: 'Imunisasi',
+    doctorName: 'dr. Maya Dewi, Sp.A',
+    subjective: 'Imunisasi Campak booster. Anak sehat, tidak ada keluhan.',
+    objective: JSON.stringify({ layanan: 'Imunisasi', bb: '38', tb: '132', suhu: '36.8', data: { namaVaksin: 'Campak', noBatch: 'CMK-2026-118', tempat: 'Lengan kiri' } }),
+    assessment: 'Imunisasi Campak Booster',
+    icdCode: 'Z23', plan: 'Pemberian vaksin Campak, observasi 30 menit',
+    prescriptions: [],
+    totalBill: 150000, paymentStatus: 'paid', paymentMethod: 'BPJS',
+  },
+  {
+    id: 'v8', patientId: 'p3', date: '2026-09-23T10:20:00', poli: 'Anak', category: 'anak', subCategory: 'KN',
+    doctorName: 'dr. Maya Dewi, Sp.A',
+    subjective: 'Kunjungan anak rutin. Batuk pilek 2 hari, anak masih aktif bermain.',
+    objective: JSON.stringify({ layanan: 'KN', bb: '38.5', tb: '132', lk: '50', suhu: '37.2', rr: '24', data: { usia: '11 tahun', keluhan: 'Batuk pilek 2 hari' } }),
+    assessment: 'Batuk Pilek Ringan',
+    icdCode: 'J00', plan: 'Perbanyak minum, paracetamol bila demam',
+    prescriptions: [
+      { drugId: 'd1', drugName: 'Paracetamol 500mg', quantity: 6, unit: 'tablet', dosage: '3x1 bila demam', pricePerUnit: 500 },
+    ],
+    totalBill: 95000, paymentStatus: 'unpaid', controlDate: '2026-09-30',
+    konsultasiFee: 50000,
+  },
+
+  // ── Mom & Baby Spa ──
+  {
+    id: 'v9', patientId: 'p6', date: '2026-09-20T14:00:00', poli: 'Mom and Baby Spa', category: 'spa', subCategory: 'Pijat Bayi',
+    doctorName: 'Terapis Nila Ayu',
+    subjective: 'Pijat bayi usia 4 bulan. Bayi tenang, tidak ada keluhan kulit.',
+    objective: JSON.stringify({ layanan: 'Pijat Bayi', data: { usia: '4 bulan', durasi: '45 menit', kondisi: 'Bayi tenang, tidak ada ruam' } }),
+    assessment: 'Treatment Spa - Pijat Bayi',
+    icdCode: 'Z50.1', plan: 'Pijat bayi relaksasi durasi 45 menit',
+    prescriptions: [],
+    totalBill: 120000, paymentStatus: 'unpaid',
+    konsultasiFee: 120000,
   },
 ];
 
@@ -85,12 +155,12 @@ const seedDrugs: Drug[] = [
 ];
 
 const seedQueue: QueueItem[] = [
-  { id: 'q1', ticketNumber: 'A-01', patientId: 'p3', patientName: 'Anak Budi Santoso', poli: 'Poli Umum', status: 'done', createdAt: '2026-09-20T07:30:00' },
-  { id: 'q2', ticketNumber: 'A-02', patientId: 'p2', patientName: 'Ibu Dewi Rahayu', poli: 'Poli Umum', status: 'in-progress', createdAt: '2026-09-20T07:45:00' },
-  { id: 'q3', ticketNumber: 'A-03', patientId: 'p6', patientName: 'Ny. Fitria Nadia', poli: 'Poli Umum', status: 'waiting', createdAt: '2026-09-20T08:00:00' },
-  { id: 'q4', ticketNumber: 'A-04', patientId: 'p1', patientName: 'Bapak Hendra Wijaya', poli: 'Poli Umum', status: 'waiting', createdAt: '2026-09-20T08:15:00' },
-  { id: 'q5', ticketNumber: 'K-01', patientId: 'p4', patientName: 'Ny. Sari Indah', poli: 'Poli KIA', status: 'waiting', createdAt: '2026-09-20T08:20:00' },
-  { id: 'q6', ticketNumber: 'K-02', patientId: 'p4', patientName: 'Ny. Fitria Nadia', poli: 'Poli KIA', status: 'waiting', createdAt: '2026-09-20T08:25:00' },
+  { id: 'q1', ticketNumber: 'A-01', patientId: 'p3', patientName: 'Anak Budi Santoso', poli: 'Anak', status: 'done', createdAt: '2026-09-20T07:30:00' },
+  { id: 'q2', ticketNumber: 'U-01', patientId: 'p2', patientName: 'Ibu Dewi Rahayu', poli: 'Umum', status: 'in-progress', createdAt: '2026-09-20T07:45:00' },
+  { id: 'q3', ticketNumber: 'U-02', patientId: 'p6', patientName: 'Ny. Fitria Nadia', poli: 'Umum', status: 'waiting', createdAt: '2026-09-20T08:00:00' },
+  { id: 'q4', ticketNumber: 'U-03', patientId: 'p1', patientName: 'Bapak Hendra Wijaya', poli: 'Umum', status: 'waiting', createdAt: '2026-09-20T08:15:00' },
+  { id: 'q5', ticketNumber: 'I-01', patientId: 'p4', patientName: 'Ny. Sari Indah', poli: 'Ibu', status: 'waiting', createdAt: '2026-09-20T08:20:00' },
+  { id: 'q6', ticketNumber: 'I-02', patientId: 'p2', patientName: 'Ibu Dewi Rahayu', poli: 'Ibu', status: 'waiting', createdAt: '2026-09-20T08:25:00' },
 ];
 
 const seedANC: ANCRecord[] = [
@@ -106,6 +176,14 @@ const seedANC: ANCRecord[] = [
       { id: 'anc4', date: '2026-09-18', ageWeeks: 28, weight: 65, bloodPressure: '110/70', fetalHeartRate: 152, uterineFundus: 27, presentation: 'Kepala', notes: 'Kontrol rutin 28 minggu' },
     ],
   },
+];
+
+const seedDoctors: Doctor[] = [
+  { id: 'dr1', name: 'dr. Andi Saputra, Sp.PD', role: 'Sp.PD', sip: '1234567890123', phone: '081234567890', poli: 'Umum' },
+  { id: 'dr2', name: 'dr. Rina Sari, Sp.OG', role: 'Sp.OG', sip: '1234567890124', phone: '081234567891', poli: 'Ibu' },
+  { id: 'dr3', name: 'dr. Maya Dewi, Sp.A', role: 'Sp.A', sip: '1234567890125', phone: '081234567892', poli: 'Anak' },
+  { id: 'dr4', name: 'Bidan Siti Rahma, S.Tr.Keb', role: 'S.Tr.Keb', sip: '1234567890126', phone: '081234567893', poli: 'Umum' },
+  { id: 'dr5', name: 'dr. Hendra Kusuma', role: 'Sp.PD', sip: '1234567890127', phone: '081234567894', poli: 'Umum' },
 ];
 
 // --- Generic CRUD helpers ---
@@ -135,6 +213,7 @@ export function initStore(): void {
   initKey(KEYS.queue, seedQueue);
   initKey(KEYS.transactions, []);
   initKey(KEYS.ancRecords, seedANC);
+  initKey(KEYS.doctors, seedDoctors);
 }
 
 export function resetStore(): void {
@@ -263,9 +342,41 @@ export const ancStore = {
   },
 };
 
+// --- Doctors ---
+export const doctorStore = {
+  getAll: () => load<Doctor>(KEYS.doctors),
+  get: (id: string) => load<Doctor>(KEYS.doctors).find(d => d.id === id),
+  add: (d: Doctor) => {
+    const all = load<Doctor>(KEYS.doctors);
+    all.push(d);
+    save(KEYS.doctors, all);
+  },
+  update: (updated: Doctor) => {
+    const all = load<Doctor>(KEYS.doctors).map(d => d.id === updated.id ? updated : d);
+    save(KEYS.doctors, all);
+  },
+  delete: (id: string) => {
+    const all = load<Doctor>(KEYS.doctors).filter(d => d.id !== id);
+    save(KEYS.doctors, all);
+  },
+};
+
 // --- Utils ---
 export const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
 export const fmtDate = (iso: string) => new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(new Date(iso));
+export const fmtDateTime = (iso: string) => new Intl.DateTimeFormat('id-ID', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(iso));
+export const calcAge = (dob: string) => {
+  const birth = new Date(dob);
+  const now = new Date();
+  let years = now.getFullYear() - birth.getFullYear();
+  const m = now.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) years--;
+  if (years < 1) {
+    const months = (now.getFullYear() - birth.getFullYear()) * 12 + now.getMonth() - birth.getMonth();
+    return `${months} bulan`;
+  }
+  return `${years} tahun`;
+};
 export const uid = () => Math.random().toString(36).slice(2, 10);
 export const calcEDD = (lmpDate: string) => {
   const d = new Date(lmpDate);

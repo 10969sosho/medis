@@ -30,8 +30,12 @@ export interface Visit {
   totalBill: number;
   paymentStatus: 'unpaid' | 'paid';
   paymentMethod?: 'Tunai' | 'QRIS' | 'BPJS' | 'Asuransi';
+  konsultasiFee?: number; // Biaya konsultasi
   controlDate?: string; // Jadwal kontrol berikutnya
   notes?: string;
+  category?: 'ibu' | 'anak' | 'spa' | 'umum';
+  subCategory?: string;
+  detailData?: any;
 }
 
 export interface Prescription {
@@ -101,4 +105,13 @@ export interface ANCVisit {
   notes: string;
 }
 
-export type PoliType = 'Poli Umum' | 'Poli Gigi' | 'Poli KIA' | 'Farmasi';
+export interface Doctor {
+  id: string;
+  name: string;
+  role: string;
+  sip?: string;
+  phone?: string;
+  poli?: string;
+}
+
+export type PoliType = 'Ibu' | 'Anak' | 'Mom and Baby Spa' | 'Umum';

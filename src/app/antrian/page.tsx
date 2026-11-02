@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import {
   Tv2,
   Plus,
@@ -16,6 +17,7 @@ import {
   Maximize2,
   Minimize2,
   ChevronRight,
+  Stethoscope,
 } from 'lucide-react';
 import {
   initStore,
@@ -26,18 +28,27 @@ import {
 import type { QueueItem, Patient } from '@/lib/types';
 
 // ── Constants ──────────────────────────────────────────────────────────────
-const POLI_LIST = ['Poli Umum', 'Poli Gigi', 'Poli KIA', 'Farmasi'] as const;
+const POLI_LIST = ['Ibu', 'Anak', 'Mom and Baby Spa', 'Umum'] as const;
 type PoliName = (typeof POLI_LIST)[number];
 
 const POLI_PREFIX: Record<PoliName, string> = {
-  'Poli Umum': 'A',
-  'Poli Gigi': 'G',
-  'Poli KIA': 'K',
-  Farmasi: 'F',
+  'Ibu': 'I',
+  'Anak': 'A',
+  'Mom and Baby Spa': 'M',
+  'Umum': 'U',
 };
 
 const TAB_OPTIONS = ['Semua', ...POLI_LIST] as const;
 type TabOption = (typeof TAB_OPTIONS)[number];
+
+// Path index poli rekam medis (untuk tombol Periksa / Isi RM)
+function rmPoliPath(poli: string): string {
+  const p = poli.toLowerCase();
+  if (p.includes('ibu') || p.includes('kia')) return '/rekam-medis/ibu/';
+  if (p.includes('anak')) return '/rekam-medis/anak/';
+  if (p.includes('spa')) return '/rekam-medis/spa/';
+  return '/rekam-medis/umum/';
+}
 
 const STATUS_BADGE: Record<QueueItem['status'], string> = {
   waiting: 'bg-amber-100 text-amber-700',
@@ -82,7 +93,7 @@ export default function AntrianPage() {
 
   // Add-modal form state
   const [addPatientId, setAddPatientId] = useState('');
-  const [addPoli, setAddPoli] = useState<PoliName>('Poli Umum');
+  const [addPoli, setAddPoli] = useState<PoliName>('Umum');
 
   // ── Load ──────────────────────────────────────────────────────────────
   const load = useCallback(() => {
@@ -165,7 +176,7 @@ export default function AntrianPage() {
     load();
     setShowAddModal(false);
     setAddPatientId('');
-    setAddPoli('Poli Umum');
+    setAddPoli('Umum');
   };
 
   // ══════════════════════════════════════════════════════════════════════
@@ -395,9 +406,17 @@ export default function AntrianPage() {
 
                           {item.status === 'called' && (
                             <>
+                              <Link
+                                href={`${rmPoliPath(item.poli)}?patientId=${item.patientId}`}
+                                onClick={() => updateStatus(item, 'in-progress')}
+                                className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shadow-sm"
+                              >
+                                <Stethoscope size={13} />
+                                Periksa / Isi RM
+                              </Link>
                               <button
                                 onClick={() => updateStatus(item, 'in-progress')}
-                                className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
+                                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
                               >
                                 <ArrowRight size={13} />
                                 Masuk Periksa

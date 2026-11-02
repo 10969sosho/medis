@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 
 // ─── constants ───────────────────────────────────────────────────────────────
-const KONSULTASI_FEE = 50_000;
+const KONSULTASI_FEE = 0;
 const CLINIC_NAME = 'Klinik Pratama Sehat Bersama';
 const CLINIC_ADDR = 'Jl. Kesehatan No. 10, Bandung 40115';
 const CLINIC_PHONE = '(022) 123-4567';
@@ -51,13 +51,14 @@ interface PaidVisit {
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
-function buildBillLines(visit: Visit): BillLine[] {
+function buildBillLines(visit: Visit, konsultasiFee: number): BillLine[] {
   const drugsTotal = visit.prescriptions.reduce(
     (s, p) => s + p.quantity * p.pricePerUnit,
     0,
   );
-  const tindakan = Math.max(0, visit.totalBill - KONSULTASI_FEE - drugsTotal);
-  const lines: BillLine[] = [{ label: 'Jasa Konsultasi', amount: KONSULTASI_FEE }];
+  const originalKonsultasi = visit.konsultasiFee ?? 0;
+  const tindakan = Math.max(0, visit.totalBill - originalKonsultasi - drugsTotal);
+  const lines: BillLine[] = [{ label: 'Jasa Konsultasi', amount: konsultasiFee }];
   if (tindakan > 0) lines.push({ label: 'Tindakan Medis', amount: tindakan });
   visit.prescriptions.forEach((p) => {
     lines.push({
@@ -203,6 +204,10 @@ export default function KasirPage() {
   const [payPatientRM, setPayPatientRM] = useState('');
   const [payMethod, setPayMethod] = useState<PayMethod>('Tunai');
   const [paidAmount, setPaidAmount] = useState('');
+  const [konsultasiFee, setKonsultasiFee] = useState(() => {
+    // Try to get from visit, fallback to 0
+    return payVisit?.konsultasiFee ? parseInt(String(payVisit.konsultasiFee), 10) : 0;
+  });
   const [payError, setPayError] = useState('');
 
   // success / invoice modal
@@ -247,6 +252,7 @@ export default function KasirPage() {
     setPayPatientRM(patientRM);
     setPayMethod('Tunai');
     setPaidAmount('');
+    setKonsultasiFee(visit.konsultasiFee ? parseInt(String(visit.konsultasiFee), 10) : 0);
     setPayError('');
   }
 
@@ -254,11 +260,14 @@ export default function KasirPage() {
   function processPayment() {
     if (!payVisit) return;
 
+    const billLines = buildBillLines(payVisit, konsultasiFee);
+    const calculatedTotal = billLines.reduce((s, l) => s + l.amount, 0);
+
     if (payMethod === 'Tunai') {
       const paid = Number(paidAmount.replace(/\D/g, ''));
-      if (!paid || paid < payVisit.totalBill) {
+      if (!paid || paid < calculatedTotal) {
         setPayError(
-          `Jumlah bayar kurang. Minimal ${idr(payVisit.totalBill)}`,
+          `Jumlah bayar kurang. Minimal ${idr(calculatedTotal)}`,
         );
         return;
       }
@@ -269,10 +278,8 @@ export default function KasirPage() {
     const paid =
       payMethod === 'Tunai'
         ? Number(paidAmount.replace(/\D/g, ''))
-        : payVisit.totalBill;
-    const change = Math.max(0, paid - payVisit.totalBill);
-
-    const billLines = buildBillLines(payVisit);
+        : calculatedTotal;
+    const change = Math.max(0, paid - calculatedTotal);
 
     const tx: Transaction = {
       id: `INV-${Date.now()}`,
@@ -281,23 +288,20 @@ export default function KasirPage() {
       patientName: payPatientName,
       date: new Date().toISOString(),
       items: billLines.map((b) => ({ label: b.label, amount: b.amount })),
-      total: payVisit.totalBill,
+      total: calculatedTotal,
       paymentMethod: payMethod,
       paidAmount: paid,
       change,
       createdAt: new Date().toISOString(),
     };
 
-    // deduct drug stock
-    payVisit.prescriptions.forEach((p) =>
-      drugStore.deductStock(p.drugId, p.quantity),
-    );
-
-    // update visit
+    // Save konsultasi fee to visit
     visitStore.update({
       ...payVisit,
       paymentStatus: 'paid',
       paymentMethod: payMethod,
+      konsultasiFee: konsultasiFee,
+      totalBill: calculatedTotal,
     });
 
     // save transaction
@@ -310,7 +314,7 @@ export default function KasirPage() {
     const pv = payVisit;
     setPayVisit(null);
     setSuccessData({
-      visit: { ...pv, paymentStatus: 'paid', paymentMethod: payMethod },
+      visit: { ...pv, paymentStatus: 'paid', paymentMethod: payMethod, totalBill: calculatedTotal },
       transaction: tx,
       patientName: payPatientName,
       patientRM: payPatientRM,
@@ -323,12 +327,13 @@ export default function KasirPage() {
   }
 
   // ── bill lines for current modal ──
-  const billLines = payVisit ? buildBillLines(payVisit) : [];
+  const billLines = payVisit ? buildBillLines(payVisit, konsultasiFee) : [];
+  const calculatedTotal = billLines.reduce((s, l) => s + l.amount, 0);
   const paidNum =
     payMethod === 'Tunai' ? Number(paidAmount.replace(/\D/g, '')) : 0;
   const kembalian =
-    payVisit && paidNum > payVisit.totalBill
-      ? paidNum - payVisit.totalBill
+    payVisit && paidNum > calculatedTotal
+      ? paidNum - calculatedTotal
       : 0;
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -669,9 +674,28 @@ export default function KasirPage() {
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">
               Rincian Tagihan
             </p>
-            <div className="space-y-2 mb-3">
-              {billLines.map((line, i) => (
-                <div key={i} className="flex justify-between text-sm">
+            <div className="space-y-2.5 mb-3">
+              {/* Jasa Konsultasi Editable */}
+              <div className="flex items-center justify-between text-sm bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                <span className="text-slate-700 font-medium">Jasa Konsultasi</span>
+                <div className="flex items-center gap-1.5 w-36">
+                  <span className="text-xs text-slate-400 font-semibold">Rp</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={konsultasiFee}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setKonsultasiFee(Number(val) || 0);
+                    }}
+                    className="w-full text-right font-mono font-semibold rounded-lg border border-slate-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Rincian Non-Konsultasi (Tindakan, Obat) */}
+              {billLines.filter((l) => l.label !== 'Jasa Konsultasi').map((line, i) => (
+                <div key={i} className="flex justify-between text-sm px-1">
                   <span className="text-slate-600">{line.label}</span>
                   <span className="font-medium text-slate-800">{idr(line.amount)}</span>
                 </div>
@@ -679,7 +703,7 @@ export default function KasirPage() {
             </div>
             <div className="border-t border-slate-200 pt-3 flex justify-between items-center mb-5">
               <span className="font-bold text-slate-800">TOTAL</span>
-              <span className="text-xl font-bold text-teal-600">{idr(payVisit.totalBill)}</span>
+              <span className="text-xl font-bold text-teal-600">{idr(calculatedTotal)}</span>
             </div>
 
             {/* Payment method */}

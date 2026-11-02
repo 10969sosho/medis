@@ -14,6 +14,8 @@ import {
   ChevronDown,
   RefreshCw,
   Pill,
+  Pencil,
+  CheckCircle2,
 } from 'lucide-react';
 import { initStore, drugStore, idr, uid } from '@/lib/store';
 
@@ -186,8 +188,10 @@ export default function ApotekPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>('Semua');
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editingDrug, setEditingDrug] = useState<Drug | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [toast, setToast] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
 
   // Load data
   function load() {
@@ -198,6 +202,23 @@ export default function ApotekPage() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    if (editingDrug) {
+      setForm({
+        name: editingDrug.name,
+        category: editingDrug.category,
+        stock: editingDrug.stock.toString(),
+        minStock: editingDrug.minStock.toString(),
+        unit: editingDrug.unit,
+        buyPrice: editingDrug.buyPrice.toString(),
+        sellPrice: editingDrug.sellPrice.toString(),
+        expiryDate: editingDrug.expiryDate,
+      });
+    } else {
+      setForm(emptyForm());
+    }
+  }, [editingDrug]);
 
   // Derived stats
   const lowStock = drugs.filter((d) => d.stock <= d.minStock);
@@ -245,8 +266,8 @@ export default function ApotekPage() {
       setFormErrors(errs);
       return;
     }
-    const newDrug: Drug = {
-      id: uid(),
+    const updatedDrug: Drug = {
+      id: editingDrug ? editingDrug.id : uid(),
       name: form.name.trim(),
       category: form.category,
       stock: Number(form.stock),
@@ -256,17 +277,31 @@ export default function ApotekPage() {
       sellPrice: Number(form.sellPrice),
       expiryDate: form.expiryDate,
     };
-    drugStore.add(newDrug);
+    
+    if (editingDrug) {
+      drugStore.update(updatedDrug);
+    } else {
+      drugStore.add(updatedDrug);
+    }
+    
     load();
     setShowModal(false);
+    setEditingDrug(null);
     setForm(emptyForm());
     setFormErrors({});
+    showToast('Data obat berhasil diperbarui');
   }
 
   function handleModalClose() {
     setShowModal(false);
+    setEditingDrug(null);
     setForm(emptyForm());
     setFormErrors({});
+  }
+
+  function showToast(message: string) {
+    setToast({ visible: true, message });
+    setTimeout(() => setToast({ visible: false, message: '' }), 3500);
   }
 
   // Input helper
@@ -299,6 +334,14 @@ export default function ApotekPage() {
           Tambah Obat
         </button>
       </div>
+
+      {/* ── Toast notification ── */}
+      {toast.visible && (
+        <div className="fixed top-5 right-5 z-[100] flex items-center gap-3 rounded-2xl bg-teal-600 px-5 py-3 text-white shadow-xl animate-fade-in">
+          <CheckCircle2 className="h-5 w-5 shrink-0" />
+          <span className="text-sm font-medium">{toast.message}</span>
+        </div>
+      )}
 
       {/* ── Alert banners ── */}
       <div className="mb-5 flex flex-col gap-3">
@@ -494,8 +537,21 @@ export default function ApotekPage() {
 
                     {/* Aksi */}
                     <td className="px-4 py-3">
-                      <RestockCell drug={drug} onRestock={handleRestock} />
-                    </td>
+              <div className="flex gap-1.5">
+                <RestockCell drug={drug} onRestock={handleRestock} />
+                <button
+                  onClick={() => {
+                    setEditingDrug(drug);
+                    setShowModal(true);
+                  }}
+                  title="Edit Obat"
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  <Pencil size={12} />
+                  Edit
+                </button>
+              </div>
+            </td>
                   </tr>
                 );
               })}
@@ -518,8 +574,12 @@ export default function ApotekPage() {
             {/* Modal header */}
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-slate-800">Tambah Obat Baru</h2>
-                <p className="text-xs text-slate-500">Isi data obat yang akan ditambahkan ke inventaris</p>
+                <h2 className="text-lg font-bold text-slate-800">
+                  {editingDrug ? 'Edit Obat' : 'Tambah Obat Baru'}
+                </h2>
+                <p className="text-xs text-slate-500">
+                  {editingDrug ? 'Perbarui data obat yang dipilih' : 'Isi data obat yang akan ditambahkan ke inventaris'}
+                </p>
               </div>
               <button
                 onClick={handleModalClose}
@@ -664,8 +724,12 @@ export default function ApotekPage() {
                 onClick={handleAddDrug}
                 className="flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 transition-colors shadow-sm"
               >
-                <Plus size={15} />
-                Simpan Obat
+                {editingDrug ? (
+                  <Pencil size={15} />
+                ) : (
+                  <Plus size={15} />
+                )}
+                {editingDrug ? 'Simpan Perubahan' : 'Simpan Obat'}
               </button>
             </div>
           </div>

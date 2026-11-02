@@ -68,6 +68,10 @@ const POLI_STYLE: Record<string, { badge: string; border: string }> = {
   'Poli KIA':  { badge: 'bg-pink-100 text-pink-700', border: 'border-l-pink-400' },
   'Poli Gigi': { badge: 'bg-purple-100 text-purple-700', border: 'border-l-purple-400' },
   'Farmasi':   { badge: 'bg-teal-100 text-teal-700', border: 'border-l-teal-400' },
+  'Umum':      { badge: 'bg-teal-100 text-teal-700', border: 'border-l-teal-400' },
+  'Ibu':       { badge: 'bg-pink-100 text-pink-700', border: 'border-l-pink-400' },
+  'Anak':      { badge: 'bg-violet-100 text-violet-700', border: 'border-l-violet-400' },
+  'Mom and Baby Spa': { badge: 'bg-rose-100 text-rose-700', border: 'border-l-rose-400' },
 };
 
 function getPoliStyle(poli: string) {
