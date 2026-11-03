@@ -117,3 +117,19 @@ export interface Doctor {
 }
 
 export type PoliType = 'Ibu' | 'Anak' | 'Mom and Baby Spa' | 'Umum';
+
+// ─── Surat Keterangan ────────────────────────────────────────────────────────
+export type LetterType = 'sakit' | 'sehat' | 'lahir' | 'cuti-hamil' | 'kematian';
+
+export interface Letter {
+  id: string;
+  type: LetterType;
+  number: string;
+  patientId: string;
+  patientName: string;
+  patientRM: string;
+  date: string; // tanggal surat (ISO date)
+  data: Record<string, string>;
+  createdAt: string;
+  updatedAt?: string;
+}

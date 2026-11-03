@@ -9,9 +9,10 @@ const KEYS = {
   transactions: 'klinik_transactions',
   ancRecords: 'klinik_anc',
   doctors: 'klinik_doctors',
+  letters: 'klinik_letters',
 };
 
-import type { Patient, Visit, Drug, QueueItem, Transaction, ANCRecord, Doctor } from './types';
+import type { Patient, Visit, Drug, QueueItem, Transaction, ANCRecord, Doctor, Letter } from './types';
 
 // --- Seed Data ---
 const seedPatients: Patient[] = [
@@ -214,6 +215,7 @@ export function initStore(): void {
   initKey(KEYS.transactions, []);
   initKey(KEYS.ancRecords, seedANC);
   initKey(KEYS.doctors, seedDoctors);
+  initKey(KEYS.letters, []);
 }
 
 export function resetStore(): void {
@@ -358,6 +360,33 @@ export const doctorStore = {
   delete: (id: string) => {
     const all = load<Doctor>(KEYS.doctors).filter(d => d.id !== id);
     save(KEYS.doctors, all);
+  },
+};
+
+// --- Surat Keterangan ---
+export const letterStore = {
+  getAll: () => load<Letter>(KEYS.letters).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+  get: (id: string) => load<Letter>(KEYS.letters).find(l => l.id === id),
+  getByPatient: (patientId: string) => load<Letter>(KEYS.letters)
+    .filter(l => l.patientId === patientId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+  add: (l: Letter) => {
+    const all = load<Letter>(KEYS.letters);
+    all.push(l);
+    save(KEYS.letters, all);
+  },
+  update: (updated: Letter) => {
+    const all = load<Letter>(KEYS.letters).map(l => l.id === updated.id ? updated : l);
+    save(KEYS.letters, all);
+  },
+  delete: (id: string) => {
+    const all = load<Letter>(KEYS.letters).filter(l => l.id !== id);
+    save(KEYS.letters, all);
+  },
+  nextNumber: (prefix: string) => {
+    const year = new Date().getFullYear();
+    const count = load<Letter>(KEYS.letters).filter(l => l.number.includes(`/${year}`)).length + 1;
+    return `${prefix}-${String(count).padStart(3, '0')}/${year}`;
   },
 };
 

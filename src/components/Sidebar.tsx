@@ -19,6 +19,14 @@ const nav = [
     { href: '/rekam-medis/umum/', label: 'Rekam Medis Umum' },
   ] },
   { href: '/riwayat', icon: Users, label: 'Riwayat Pasien' },
+  { href: '/surat', icon: FileText, label: 'Surat Keterangan', submenu: [
+    { href: '/surat/', label: 'Riwayat Surat' },
+    { href: '/surat/sakit/', label: 'Surat Keterangan Sakit' },
+    { href: '/surat/sehat/', label: 'Surat Keterangan Sehat' },
+    { href: '/surat/lahir/', label: 'Surat Keterangan Lahir' },
+    { href: '/surat/cuti-hamil/', label: 'Surat Keterangan Cuti Hamil' },
+    { href: '/surat/kematian/', label: 'Surat Keterangan Kematian' },
+  ] },
   { href: null, icon: null, label: 'OPERASIONAL', section: true },
   { href: '/antrian', icon: ListOrdered, label: 'Antrian' },
   { href: '/apotek', icon: Pill, label: 'Apotek & Obat' },
@@ -31,7 +39,7 @@ const nav = [
 
 export default function Sidebar() {
   const path = usePathname();
-  const [openRmSubmenu, setOpenRmSubmenu] = useState(true);
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({ '/rekam-medis': true });
 
   return (
     <aside className="w-64 min-h-screen bg-slate-900 text-slate-300 flex flex-col flex-shrink-0">
@@ -63,9 +71,10 @@ export default function Sidebar() {
           const Icon = item.icon;
           const active = path === item.href || (item.href !== '/' && path.startsWith(item.href));
 
-          // If item has submenu (Rekam Medis)
+          // If item has submenu
           if ('submenu' in item) {
             const submenu = item.submenu as unknown as Array<{ href: string; label: string }>;
+            const isOpen = openSubmenus[item.href] ?? false;
             return (
               <div key={item.href} className="space-y-1">
                 <div className="flex items-center justify-between rounded-lg hover:bg-slate-800 transition-all">
@@ -82,17 +91,22 @@ export default function Sidebar() {
                   </Link>
                   <button
                     type="button"
-                    onClick={() => setOpenRmSubmenu(!openRmSubmenu)}
+                    onClick={() =>
+                      setOpenSubmenus((prev) => ({ ...prev, [item.href]: !isOpen }))
+                    }
                     className="p-2 text-slate-500 hover:text-slate-300 transition-colors"
                   >
-                    {openRmSubmenu ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                   </button>
                 </div>
 
-                {openRmSubmenu && (
+                {isOpen && (
                   <div className="pl-7 pr-2 py-1 space-y-1 bg-slate-950/40 rounded-xl my-1 border border-slate-800/80">
                     {submenu.map((sub, si) => {
-                      const subActive = path === sub.href || path.startsWith(sub.href.replace(/\/$/, ''));
+                      const subBase = sub.href.replace(/\/$/, '');
+                      const subActive =
+                        path === sub.href ||
+                        (sub.href !== '/surat/' && path.startsWith(subBase));
                       return (
                         <Link
                           key={si}
