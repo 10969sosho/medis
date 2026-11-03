@@ -2,7 +2,7 @@
 import React from 'react';
 
 export interface FormSpaData {
-  layanan: 'Pijat Bayi' | 'Pijat Anak' | 'Pijat Bumil' | 'Senam Yoga';
+  layanan: 'Pijat Bayi' | 'Pijat Anak' | 'Pijat Bumil' | 'Pijat Nifas/Pijat Laktasi' | 'Senam Yoga';
   // Pijat Bayi & Anak
   tanggal?: string;
   usia?: string;
@@ -18,6 +18,11 @@ export interface FormSpaData {
   usiaKehamilan?: string;
   keluhanBumil?: string;
   kondisiKehamilan?: string;
+
+  // Pijat Nifas / Laktasi
+  usiaNifas?: string;
+  keluhanNifas?: string;
+  kondisiIbu?: string;
 
   // Senam / Yoga Hamil
   jenisKelas?: string;
@@ -43,7 +48,7 @@ export function FormRekamMedisSpa({
           Pilihan Layanan Mom & Baby Spa
         </label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {(['Pijat Bayi', 'Pijat Anak', 'Pijat Bumil', 'Senam Yoga'] as const).map((l) => (
+          {(['Pijat Bayi', 'Pijat Anak', 'Pijat Bumil', 'Pijat Nifas/Pijat Laktasi', 'Senam Yoga'] as const).map((l) => (
             <button
               key={l}
               type="button"
@@ -57,6 +62,7 @@ export function FormRekamMedisSpa({
               {l === 'Pijat Bayi' && 'Pijat Bayi'}
               {l === 'Pijat Anak' && 'Pijat Anak'}
               {l === 'Pijat Bumil' && 'Pijat Bumil'}
+              {l === 'Pijat Nifas/Pijat Laktasi' && 'Pijat Nifas/Pijat Laktasi'}
               {l === 'Senam Yoga' && 'Senam / Yoga Hamil'}
             </button>
           ))}
@@ -254,6 +260,105 @@ export function FormRekamMedisSpa({
               <textarea
                 rows={2}
                 placeholder="Catatan terapis"
+                value={data.catatanTerapis || ''}
+                onChange={(e) => setField('catatanTerapis', e.target.value)}
+                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 3b. PIJAT NIFAS / LAKTASI ── */}
+      {data.layanan === 'Pijat Nifas/Pijat Laktasi' && (
+        <div className="space-y-4">
+          <div className="bg-pink-50/50 p-4 rounded-2xl border border-pink-100 space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-pink-700">Form Pijat Nifas / Laktasi</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="text-xs font-medium text-slate-600 mb-1 block">Tanggal</label>
+                <input
+                  type="date"
+                  value={data.tanggal || ''}
+                  onChange={(e) => setField('tanggal', e.target.value)}
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600 mb-1 block">Usia Nifas</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: 2 minggu post partum"
+                  value={data.usiaNifas || ''}
+                  onChange={(e) => setField('usiaNifas', e.target.value)}
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600 mb-1 block">Durasi (Menit)</label>
+                <input
+                  type="text"
+                  placeholder="60 Menit"
+                  value={data.durasi || ''}
+                  onChange={(e) => setField('durasi', e.target.value)}
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600 mb-1 block">Jadwal Berikutnya</label>
+                <input
+                  type="date"
+                  value={data.jadwalBerikutnya || ''}
+                  onChange={(e) => setField('jadwalBerikutnya', e.target.value)}
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-xs font-medium text-slate-600 mb-1 block">Keluhan (Payudara/ASI)</label>
+                <input
+                  type="text"
+                  placeholder="Bengkak payudara, ASI tidak lancar, nyeri, dll"
+                  value={data.keluhanNifas || ''}
+                  onChange={(e) => setField('keluhanNifas', e.target.value)}
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-xs font-medium text-slate-600 mb-1 block">Kondisi Ibu</label>
+                <input
+                  type="text"
+                  placeholder="Normal, tidak ada kontraksi/flek, luka jahitan baik"
+                  value={data.kondisiIbu || ''}
+                  onChange={(e) => setField('kondisiIbu', e.target.value)}
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-xs font-medium text-slate-600 mb-1 block">Jenis Treatment</label>
+                <input
+                  type="text"
+                  placeholder="Pijat Laktasi / Pijat Oksitosin / Pijat Relaksasi Nifas"
+                  value={data.jenisTreatment || ''}
+                  onChange={(e) => setField('jenisTreatment', e.target.value)}
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-xs font-medium text-slate-600 mb-1 block">Kondisi Setelah Treatment</label>
+                <input
+                  type="text"
+                  placeholder="Rileks, ASI lancar, pegal berkurang"
+                  value={data.kondisiSetelah || ''}
+                  onChange={(e) => setField('kondisiSetelah', e.target.value)}
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-600 mb-1 block">Catatan Terapis</label>
+              <textarea
+                rows={2}
+                placeholder="Titik penekanan, minyak hangat yang digunakan, respon ibu"
                 value={data.catatanTerapis || ''}
                 onChange={(e) => setField('catatanTerapis', e.target.value)}
                 className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white"

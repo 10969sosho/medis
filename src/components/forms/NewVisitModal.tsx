@@ -207,7 +207,7 @@ export function NewVisitModal({
       };
     } else if (selectedPoli === 'Mom and Baby Spa') {
       subCategory = spaData.layanan;
-      subjective = spaData.keluhanBumil || spaData.kondisiSebelum || `Treatment ${spaData.layanan}`;
+      subjective = spaData.keluhanBumil || spaData.keluhanNifas || spaData.kondisiSebelum || spaData.kondisiIbu || `Treatment ${spaData.layanan}`;
       assessment = `Treatment Spa - ${spaData.layanan}`;
       icdCode = 'Z50.1';
       plan = `${spaData.jenisTreatment || spaData.layanan} durasi ${spaData.durasi || '45 menit'}`;
@@ -216,7 +216,7 @@ export function NewVisitModal({
         layanan: spaData.layanan,
         data: spaData,
         bb: spaData.bb || '',
-        usia: spaData.usia || spaData.usiaKehamilan || '',
+        usia: spaData.usia || spaData.usiaKehamilan || spaData.usiaNifas || '',
         durasi: spaData.durasi || '',
       };
     } else {
