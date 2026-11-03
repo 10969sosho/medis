@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { initStore, letterStore, fmtDate } from '@/lib/store';
 import type { Letter } from '@/lib/types';
@@ -70,15 +71,39 @@ export function SuratIndexPage() {
     <>
       <style>{`
         @media print {
-          body * { visibility: hidden !important; }
-          .letter-print, .letter-print * { visibility: visible !important; }
-          .letter-print {
-            position: fixed !important;
-            left: 0; top: 0;
-            width: 100%;
-            padding: 0;
+          @page { size: A4 portrait; margin: 10mm; }
+          html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+          body > *:not(.letter-print-portal) { display: none !important; }
+          .letter-print-portal {
+            position: static !important;
+            inset: auto !important;
+            display: block !important;
+            background: #fff !important;
+            padding: 0 !important;
           }
-          .no-print { display: none !important; }
+          .letter-print-portal .no-print { display: none !important; }
+          .letter-print-portal .print-card {
+            display: block !important;
+            max-height: none !important;
+            max-width: none !important;
+            width: 100% !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            overflow: visible !important;
+          }
+          .letter-print-portal .print-scroll {
+            display: block !important;
+            overflow: visible !important;
+            max-height: none !important;
+            padding: 0 !important;
+            background: #fff !important;
+          }
+          .letter-print {
+            position: static !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
         }
       `}</style>
 
@@ -227,9 +252,9 @@ export function SuratIndexPage() {
       </div>
 
       {/* Preview / print modal */}
-      {preview && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+      {preview && typeof document !== 'undefined' && createPortal(
+        <div className="letter-print-portal fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm">
+          <div className="print-card bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
             <div className="no-print px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
               <div>
                 <h2 className="text-base font-bold">Preview {LETTER_META[preview.type].label}</h2>
@@ -243,7 +268,7 @@ export function SuratIndexPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-100">
+            <div className="print-scroll flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-100">
               <div className="letter-print">
                 <LetterPrint letter={preview} />
               </div>
@@ -266,7 +291,8 @@ export function SuratIndexPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

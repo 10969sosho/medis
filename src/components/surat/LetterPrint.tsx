@@ -2,7 +2,7 @@
 
 import React from 'react';
 import type { Letter } from '@/lib/types';
-import { KOP, LETTER_META } from '@/lib/letterConfig';
+import { LETTER_META } from '@/lib/letterConfig';
 
 function fmt(iso?: string) {
   if (!iso) return '........................';
@@ -28,8 +28,8 @@ function hari(iso?: string) {
 
 function Line({ label, value }: { label: string; value?: string }) {
   return (
-    <div className="flex gap-2 text-[13px] leading-relaxed">
-      <span className="w-32 shrink-0">{label}</span>
+    <div className="flex gap-2 text-[12px] leading-relaxed">
+      <span className="w-28 shrink-0">{label}</span>
       <span className="w-3 shrink-0">:</span>
       <span className="flex-1 border-b border-dotted border-slate-400 min-h-[18px]">
         {value || '\u00A0'}
@@ -38,14 +38,68 @@ function Line({ label, value }: { label: string; value?: string }) {
   );
 }
 
+function KopHeader({ kop }: { kop: 'al-faruq' | 'bidan-mulyani' }) {
+  // Kolom kiri & kanan berukuran sama (80px) sehingga kolom teks di tengah
+  // tepat berada di titik tengah lebar kertas — sejajar dengan judul surat.
+  const grid = 'grid grid-cols-[80px_1fr_80px] items-center gap-x-4 border-b-[3px] border-slate-900 pb-2 mb-4 font-serif';
+
+  if (kop === 'al-faruq') {
+    return (
+      <div className={grid}>
+        <img
+          src="/kop/logo-alfaruq.png"
+          alt="Logo Klinik Medis Al Faruq"
+          className="w-20 h-20 object-contain"
+        />
+        <div className="text-center">
+          <h1 className="text-[21px] font-black tracking-wide leading-tight">
+            KLINIK MEDIS AL FARUQ
+          </h1>
+          <p className="text-[11px] leading-snug">
+            Jl. Brawijaya RT. 02 RW. 01 Desa Candipari Kec. Porong
+          </p>
+          <p className="text-[11px] leading-snug">
+            Kab. Sidoarjo Telp: (031) 99623668
+          </p>
+          <p className="text-[11px] leading-snug">
+            Email: alfaruqmedicalcliniq@gmail.com
+          </p>
+        </div>
+        <div aria-hidden className="w-20 h-20" />
+      </div>
+    );
+  }
+  return (
+    <div className={grid}>
+      <img
+        src="/kop/logo-bidan-mulyani.png"
+        alt="Logo Bidan Mulyani"
+        className="w-20 h-20 object-contain"
+      />
+      <div className="text-center">
+        <p className="text-[11px] font-semibold tracking-[0.2em]">PRAKTEK MANDIRI BIDAN</p>
+        <h1 className="text-[20px] font-black tracking-wide leading-tight">
+          MULYANI, SST. Bd
+        </h1>
+        <p className="text-[11px] leading-snug">
+          PERUM KEDUNGTURI PERMAI II BLOK U-23 TAMAN SIDOARJO
+        </p>
+        <p className="text-[11px] leading-snug">
+          TELP. (031) 52601759 / 081390974100
+        </p>
+      </div>
+      <div aria-hidden className="w-20 h-20" />
+    </div>
+  );
+}
+
 export function LetterPrint({ letter }: { letter: Letter }) {
   const meta = LETTER_META[letter.type];
   const d = letter.data;
-  const kop = KOP[meta.kop];
 
   return (
-    <div className="bg-white text-slate-900 w-full max-w-[210mm] mx-auto p-6 sm:p-8 print:p-0 print:max-w-none">
-      <img src={kop.src} alt={kop.alt} className="w-full object-contain mb-3" />
+    <div className="bg-white text-slate-900 w-full max-w-[210mm] mx-auto p-6 sm:p-8 print:p-0 print:max-w-none font-serif">
+      <KopHeader kop={meta.kop} />
 
       <h1 className="text-center text-lg font-bold underline tracking-wide mb-1">
         {meta.label.toUpperCase()}
@@ -54,7 +108,7 @@ export function LetterPrint({ letter }: { letter: Letter }) {
 
       {letter.type === 'sakit' && (
         <>
-          <p className="text-[13px] leading-relaxed mb-3">
+          <p className="text-[12px] leading-relaxed mb-3">
             Yang bertanda tangan di bawah ini menerangkan bahwa:
           </p>
           <div className="space-y-1 mb-4">
@@ -64,14 +118,14 @@ export function LetterPrint({ letter }: { letter: Letter }) {
             <Line label="Pekerjaan" value={d.pekerjaan} />
             <Line label="Alamat" value={d.alamat} />
           </div>
-          <p className="text-[13px] leading-relaxed text-justify mb-4">
+          <p className="text-[12px] leading-relaxed text-justify mb-4">
             Pada pemeriksaan yang bersangkutan dalam keadaan sakit
             {d.keterangan ? ` (${d.keterangan})` : ''}, sehingga perlu istirahat
             selama <strong>{d.lamaIstirahat || '......'}</strong> hari, dari tanggal{' '}
             <strong>{fmt(d.mulaiTanggal)}</strong> sampai dengan tanggal{' '}
             <strong>{fmt(d.sampaiTanggal)}</strong>.
           </p>
-          <p className="text-[13px] leading-relaxed mb-10">
+          <p className="text-[12px] leading-relaxed mb-8">
             Demikianlah surat keterangan ini dibuat untuk dapat dipergunakan
             sebagaimana mestinya.
           </p>
@@ -80,7 +134,7 @@ export function LetterPrint({ letter }: { letter: Letter }) {
 
       {letter.type === 'sehat' && (
         <>
-          <p className="text-[13px] leading-relaxed mb-3">
+          <p className="text-[12px] leading-relaxed mb-3">
             Yang bertanda tangan di bawah ini menerangkan bahwa:
           </p>
           <div className="space-y-1 mb-4">
@@ -89,7 +143,7 @@ export function LetterPrint({ letter }: { letter: Letter }) {
             <Line label="Pekerjaan" value={d.pekerjaan} />
             <Line label="Alamat" value={d.alamat} />
           </div>
-          <p className="text-[13px] leading-relaxed mb-3">
+          <p className="text-[12px] leading-relaxed mb-3">
             Dengan hasil baik / tidak baik: <strong>{d.hasil || '................'}</strong>
           </p>
           <div className="space-y-1 mb-4">
@@ -99,7 +153,7 @@ export function LetterPrint({ letter }: { letter: Letter }) {
             <Line label="Tinggi Badan" value={d.tinggi ? `${d.tinggi} cm` : ''} />
             <Line label="Tensi" value={d.tensi ? `${d.tensi} mmHg` : ''} />
           </div>
-          <p className="text-[13px] leading-relaxed mb-10">
+          <p className="text-[12px] leading-relaxed mb-8">
             Surat keterangan ini berlaku selama <strong>{d.berlaku || '3 (tiga) bulan'}</strong>,
             demikian harap yang berkepentingan maklum.
           </p>
@@ -108,7 +162,7 @@ export function LetterPrint({ letter }: { letter: Letter }) {
 
       {letter.type === 'lahir' && (
         <>
-          <p className="text-[13px] leading-relaxed mb-3">
+          <p className="text-[12px] leading-relaxed mb-3">
             Pada hari <strong>{d.hariLahir || hari(d.tanggalLahir)}</strong>, tanggal{' '}
             <strong>{fmt(d.tanggalLahir)}</strong> pukul{' '}
             <strong>{d.jamLahir || '......'}</strong> WIB telah lahir seorang bayi:
@@ -121,7 +175,7 @@ export function LetterPrint({ letter }: { letter: Letter }) {
             <Line label="Panjang Badan" value={d.panjangBadan ? `${d.panjangBadan} cm` : ''} />
             <Line label="Diberi Nama" value={d.namaBayi} />
           </div>
-          <p className="text-[13px] font-semibold mb-2">Orang Tua:</p>
+          <p className="text-[12px] font-semibold mb-2">Orang Tua:</p>
           <div className="space-y-1 mb-4">
             <Line label="Nama Ibu" value={d.namaIbu} />
             <Line label="Umur" value={d.umurIbu} />
@@ -136,7 +190,7 @@ export function LetterPrint({ letter }: { letter: Letter }) {
             <Line label="Kecamatan" value={d.kecamatan} />
             <Line label="Kab/Kota" value={d.kabKota} />
           </div>
-          <div className="grid grid-cols-2 gap-6 text-[13px] mt-8">
+          <div className="grid grid-cols-2 gap-6 text-[12px] mt-8">
             <div>
               <p>Saksi I</p>
               <div className="h-12" />
@@ -148,7 +202,7 @@ export function LetterPrint({ letter }: { letter: Letter }) {
               <p className="border-t border-slate-400 pt-1">..............................</p>
             </div>
           </div>
-          <div className="mt-6 text-[13px]">
+          <div className="mt-6 text-[12px]">
             <p>Penolong Persalinan</p>
             <div className="h-12" />
             <p className="font-semibold">{d.signer}</p>
@@ -158,7 +212,7 @@ export function LetterPrint({ letter }: { letter: Letter }) {
 
       {letter.type === 'cuti-hamil' && (
         <>
-          <p className="text-[13px] leading-relaxed mb-3">
+          <p className="text-[12px] leading-relaxed mb-3">
             Yang bertanda tangan di bawah ini BIDAN PRAKTEK SWASTA menerangkan bahwa:
           </p>
           <div className="space-y-1 mb-4">
@@ -167,14 +221,14 @@ export function LetterPrint({ letter }: { letter: Letter }) {
             <Line label="Pekerjaan" value={d.pekerjaan} />
             <Line label="Alamat" value={d.alamat} />
           </div>
-          <p className="text-[13px] leading-relaxed text-justify mb-4">
+          <p className="text-[12px] leading-relaxed text-justify mb-4">
             Sesuai hasil pemeriksaan tanggal <strong>{fmt(d.tglPemeriksaan)}</strong> telah
             hamil <strong>{d.usiaKehamilan || '......'}</strong> bulan, maka perlu mendapatkan
             ijin cuti bersalin mulai tanggal <strong>{fmt(d.cutiMulai)}</strong> s/d{' '}
             <strong>{fmt(d.cutiSelesai)}</strong> (selama{' '}
             <strong>{d.lamaCuti || '......'}</strong> bulan).
           </p>
-          <p className="text-[13px] leading-relaxed mb-10">
+          <p className="text-[12px] leading-relaxed mb-8">
             Demikian untuk dapat dipergunakan seperlunya.
           </p>
         </>
@@ -182,7 +236,7 @@ export function LetterPrint({ letter }: { letter: Letter }) {
 
       {letter.type === 'kematian' && (
         <>
-          <p className="text-[13px] leading-relaxed mb-3">
+          <p className="text-[12px] leading-relaxed mb-3">
             Yang bertanda tangan di bawah ini:
           </p>
           <div className="space-y-1 mb-4">
@@ -190,10 +244,10 @@ export function LetterPrint({ letter }: { letter: Letter }) {
             <Line label="Alamat Praktek" value={d.alamatPraktik} />
             <Line label="Jabatan" value={d.jabatan} />
           </div>
-          <p className="text-[13px] leading-relaxed mb-3">
+          <p className="text-[12px] leading-relaxed mb-3">
             Menerangkan bahwa, telah meninggal:
           </p>
-          <div className="space-y-1 mb-10">
+          <div className="space-y-1 mb-8">
             <Line label="Nama" value={d.nama} />
             <Line label="Umur" value={d.umur} />
             <Line label="Jenis Kelamin" value={d.jenisKelamin} />
@@ -205,10 +259,10 @@ export function LetterPrint({ letter }: { letter: Letter }) {
       )}
 
       <div className="flex justify-end mt-6">
-        <div className="text-center text-[13px] min-w-[220px]">
+        <div className="text-center text-[12px] min-w-[220px]">
           <p>Sidoarjo, {fmt(letter.date)}</p>
           <p className="mt-1">{meta.signerLabel}</p>
-          <div className="h-16" />
+          <div className="h-12" />
           <p className="font-semibold underline">{d.signer || meta.defaultSigner}</p>
         </div>
       </div>
