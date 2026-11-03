@@ -31,6 +31,8 @@ export interface Visit {
   paymentStatus: 'unpaid' | 'paid';
   paymentMethod?: 'Tunai' | 'QRIS' | 'BPJS' | 'Asuransi';
   konsultasiFee?: number; // Biaya konsultasi
+  drugGlobalFee?: number; // Biaya obat global (belum dirinci)
+  drugDetailPending?: boolean; // Detail obat belum diisi
   controlDate?: string; // Jadwal kontrol berikutnya
   notes?: string;
   category?: 'ibu' | 'anak' | 'spa' | 'umum';

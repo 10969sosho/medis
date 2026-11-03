@@ -3,8 +3,8 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { initStore, patientStore, visitStore, idr, calcAge, fmtDate, fmtDateTime } from '@/lib/store';
-import type { Patient, Visit } from '@/lib/types';
+import { initStore, patientStore, visitStore, drugStore, idr, calcAge, fmtDate, fmtDateTime, uid } from '@/lib/store';
+import type { Patient, Visit, Prescription, Drug } from '@/lib/types';
 import { NewVisitModal } from '@/components/forms/NewVisitModal';
 import {
   Activity,
@@ -150,10 +150,12 @@ export function VisitDetailModal({
   visit,
   patient,
   onClose,
+  onUpdated,
 }: {
   visit: Visit;
   patient?: Patient;
   onClose: () => void;
+  onUpdated?: () => void;
 }) {
   const cfg =
     POLI_KEYS.map((k) => POLI_CONFIG[k]).find((c) => belongsToPoli(visit, c.key)) ??
@@ -167,6 +169,69 @@ export function VisitDetailModal({
   const dataEntries = Object.entries(nested).filter(
     ([k, v]) => k !== 'layanan' && v !== '' && v !== null && v !== undefined,
   );
+
+  const isDrugDetailPending = Boolean(
+    visit.drugDetailPending ||
+      ((visit.drugGlobalFee || 0) > 0 &&
+        (!visit.prescriptions || visit.prescriptions.length === 0)),
+  );
+
+  const [detailDrugs, setDetailDrugs] = useState<Array<Prescription & { _key: string }>>([]);
+  const [detailDrugSearch, setDetailDrugSearch] = useState('');
+  const allDrugs = useMemo(() => drugStore.getAll(), []);
+
+  useEffect(() => {
+    setDetailDrugs([]);
+    setDetailDrugSearch('');
+  }, [visit.id]);
+
+  const filteredDetailDrugs = useMemo(
+    () =>
+      allDrugs.filter((d) =>
+        d.name.toLowerCase().includes(detailDrugSearch.toLowerCase()),
+      ),
+    [allDrugs, detailDrugSearch],
+  );
+
+  function addDetailDrug(drug: Drug) {
+    if (detailDrugs.find((d) => d.drugId === drug.id)) return;
+    setDetailDrugs((prev) => [
+      ...prev,
+      {
+        _key: uid(),
+        drugId: drug.id,
+        drugName: drug.name,
+        quantity: 1,
+        unit: drug.unit,
+        dosage: '3x1 sesudah makan',
+        pricePerUnit: drug.sellPrice,
+      },
+    ]);
+  }
+  function removeDetailDrug(key: string) {
+    setDetailDrugs((prev) => prev.filter((d) => d._key !== key));
+  }
+  function updateDetailDrug(key: string, field: 'quantity' | 'dosage', val: string | number) {
+    setDetailDrugs((prev) =>
+      prev.map((d) =>
+        d._key === key
+          ? { ...d, [field]: field === 'quantity' ? Number(val) : val }
+          : d,
+      ),
+    );
+  }
+  function saveDrugDetail() {
+    if (detailDrugs.length === 0) return;
+    detailDrugs.forEach((rx) => drugStore.deductStock(rx.drugId, rx.quantity));
+    visitStore.update({
+      ...visit,
+      prescriptions: detailDrugs.map(({ _key: _k, ...rest }) => rest),
+      drugGlobalFee: 0,
+      drugDetailPending: false,
+    });
+    onUpdated?.();
+    onClose();
+  }
 
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="bg-white p-4 rounded-2xl border border-slate-200">
@@ -273,6 +338,98 @@ export function VisitDetailModal({
               )}
             </Section>
           </div>
+
+          {/* Lengkapi Detail Obat (jika masih global) */}
+          {isDrugDetailPending && (
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+                Lengkapi Detail Obat (Biaya Global: {idr(visit.drugGlobalFee || 0)})
+              </p>
+              <p className="text-xs text-slate-500">
+                Obat belum dirinci. Cari dan tambahkan obat yang sebenarnya; total tagihan tidak berubah.
+              </p>
+              <input
+                type="text"
+                placeholder="Ketik nama obat untuk mencari..."
+                value={detailDrugSearch}
+                onChange={(e) => setDetailDrugSearch(e.target.value)}
+                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-teal-500"
+              />
+              {detailDrugSearch && (
+                <div className="bg-white border border-slate-200 rounded-xl max-h-40 overflow-y-auto divide-y shadow-lg">
+                  {filteredDetailDrugs.length === 0 ? (
+                    <p className="p-3 text-xs text-slate-400 text-center">Obat tidak ditemukan</p>
+                  ) : (
+                    filteredDetailDrugs.map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => addDetailDrug(d)}
+                        className="w-full text-left p-2.5 hover:bg-slate-50 text-xs flex justify-between items-center transition-colors"
+                      >
+                        <div>
+                          <span className="font-bold text-slate-800">{d.name}</span>
+                          <span className="text-slate-400 ml-2">({d.unit}) · Stok: {d.stock}</span>
+                        </div>
+                        <span className="font-bold text-teal-600">{idr(d.sellPrice)}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+              {detailDrugs.length > 0 && (
+                <div className="space-y-2">
+                  {detailDrugs.map((rx) => (
+                    <div
+                      key={rx._key}
+                      className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-slate-800 truncate">{rx.drugName}</p>
+                        <p className="text-slate-500">{idr(rx.pricePerUnit)} / {rx.unit}</p>
+                      </div>
+                      <div className="w-20">
+                        <input
+                          type="number"
+                          min={1}
+                          value={rx.quantity}
+                          onChange={(e) => updateDetailDrug(rx._key, 'quantity', e.target.value)}
+                          className="w-full p-1.5 border border-slate-200 rounded-lg text-center font-bold bg-white"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          placeholder="Aturan pakai"
+                          value={rx.dosage}
+                          onChange={(e) => updateDetailDrug(rx._key, 'dosage', e.target.value)}
+                          className="w-full p-1.5 border border-slate-200 rounded-lg bg-white"
+                        />
+                      </div>
+                      <span className="font-bold text-slate-700 min-w-[70px] text-right">
+                        {idr(rx.quantity * rx.pricePerUnit)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeDetailDrug(rx._key)}
+                        className="p-1 text-red-500 hover:text-red-700 rounded-lg hover:bg-red-50"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={saveDrugDetail}
+                disabled={detailDrugs.length === 0}
+                className="w-full bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold py-2 rounded-xl transition-all"
+              >
+                Simpan Detail Obat
+              </button>
+            </div>
+          )}
 
           {/* Resep */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200">
@@ -677,6 +834,10 @@ function PoliContent({ cfg }: { cfg: PoliCfg }) {
           visit={detail}
           patient={patientById[detail.patientId]}
           onClose={() => setDetail(null)}
+          onUpdated={() => {
+            load();
+            setDetail(null);
+          }}
         />
       )}
     </div>

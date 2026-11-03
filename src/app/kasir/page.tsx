@@ -60,6 +60,9 @@ function buildBillLines(visit: Visit, konsultasiFee: number): BillLine[] {
   const tindakan = Math.max(0, visit.totalBill - originalKonsultasi - drugsTotal);
   const lines: BillLine[] = [{ label: 'Jasa Konsultasi', amount: konsultasiFee }];
   if (tindakan > 0) lines.push({ label: 'Tindakan Medis', amount: tindakan });
+  if ((!visit.prescriptions || visit.prescriptions.length === 0) && (visit.drugGlobalFee || 0) > 0) {
+    lines.push({ label: 'Obat (belum dirinci)', amount: visit.drugGlobalFee as number });
+  }
   visit.prescriptions.forEach((p) => {
     lines.push({
       label: `${p.drugName} × ${p.quantity} ${p.unit}`,

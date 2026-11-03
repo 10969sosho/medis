@@ -85,6 +85,8 @@ export function NewVisitModal({
     tanggal: new Date().toISOString().split('T')[0],
   });
 
+  const [drugGlobalFee, setDrugGlobalFee] = useState<string>('');
+
   const [umumData, setUmumData] = useState<FormUmumData>({
     riwayatAlergi: patient?.allergy && patient.allergy !== '-' ? patient.allergy : '',
   });
@@ -126,11 +128,13 @@ export function NewVisitModal({
     (sum, rx) => sum + rx.quantity * rx.pricePerUnit,
     0
   );
-  const totalBill = parseInt(konsultasiFee, 10) + (parseInt(tindakanFee, 10) || 0) + drugTotal;
+  const globalDrugCost = prescriptions.length > 0 ? 0 : (parseInt(drugGlobalFee, 10) || 0);
+  const totalBill = parseInt(konsultasiFee, 10) + (parseInt(tindakanFee, 10) || 0) + (prescriptions.length > 0 ? drugTotal : globalDrugCost);
 
   function addDrug(drug: Drug) {
     const already = prescriptions.find((p) => p.drugId === drug.id);
     if (already) return;
+    setDrugGlobalFee('');
     setPrescriptions([
       ...prescriptions,
       {
@@ -251,6 +255,8 @@ export function NewVisitModal({
       icdCode,
       plan,
       prescriptions: prescriptions.map(({ _key: _k, ...rest }) => rest),
+      drugGlobalFee: prescriptions.length > 0 ? 0 : (parseInt(drugGlobalFee, 10) || 0),
+      drugDetailPending: prescriptions.length === 0 && (parseInt(drugGlobalFee, 10) || 0) > 0,
       totalBill,
       paymentStatus: 'unpaid',
       konsultasiFee: parseInt(konsultasiFee, 10) || 0,
@@ -482,6 +488,22 @@ export function NewVisitModal({
                       onChange={(e) => setKonsultasiFee(e.target.value)}
                       className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-teal-500 font-mono"
                     />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 mb-1 block">Biaya Obat Global (Rp) — opsional, tanpa detail</label>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={drugGlobalFee}
+                      disabled={prescriptions.length > 0}
+                      onChange={(e) => setDrugGlobalFee(e.target.value.replace(/\D/g, ''))}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-teal-500 font-mono disabled:bg-slate-100 disabled:text-slate-400"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      {prescriptions.length > 0
+                        ? 'Sudah ada obat per item — biaya global dinonaktifkan.'
+                        : 'Isi total biaya obat jika belum mau pilih obat satu per satu. Detail bisa dilengkapi nanti.'}
+                    </p>
                   </div>
                   <div>
                     <label className="text-xs font-medium text-slate-600 mb-1 block">Catatan Rekomendasi Farmasi / Kasir</label>
