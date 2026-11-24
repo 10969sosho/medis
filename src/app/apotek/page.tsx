@@ -42,6 +42,9 @@ const CATEGORIES = [
   'Kortikosteroid',
   'Bronkodilator',
   'Antasida/PPI',
+  'Salep',
+  'Obat Tetes',
+  'Alat Habis Pakai',
   'Lainnya',
 ];
 

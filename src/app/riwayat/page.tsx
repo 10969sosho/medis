@@ -19,6 +19,7 @@ import {
   CreditCard,
   RotateCcw,
   FileText,
+  Eye,
 } from 'lucide-react';
 import {
   initStore,
@@ -28,6 +29,7 @@ import {
   idr,
 } from '@/lib/store';
 import type { Patient, Visit } from '@/lib/types';
+import { VisitDetailModal } from '@/components/PoliIndexPage';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -110,9 +112,10 @@ function insuranceBadge(ins: string) {
 interface VisitCardProps {
   visit: Visit;
   defaultOpen: boolean;
+  onOpenDetail?: (visit: Visit) => void;
 }
 
-function VisitCard({ visit, defaultOpen }: VisitCardProps) {
+function VisitCard({ visit, defaultOpen, onOpenDetail }: VisitCardProps) {
   const [open, setOpen] = useState(defaultOpen);
   const { badge, border } = getPoliStyle(visit.poli);
   const vital = parseVital(visit.objective);
@@ -131,14 +134,31 @@ function VisitCard({ visit, defaultOpen }: VisitCardProps) {
           <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badge}`}>
             {visit.poli}
           </span>
+          {visit.subCategory && (
+            <span className="inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-2.5 py-0.5 text-xs font-semibold">
+              {visit.subCategory}
+            </span>
+          )}
         </div>
-        <button
-          onClick={() => setOpen((p) => !p)}
-          className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 print:hidden"
-          aria-label={open ? 'Collapse' : 'Expand'}
-        >
-          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0 print:hidden">
+          {onOpenDetail && (
+            <button
+              onClick={() => onOpenDetail(visit)}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors"
+              title="Lihat Detail Rekam Medis"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              Detail
+            </button>
+          )}
+          <button
+            onClick={() => setOpen((p) => !p)}
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            aria-label={open ? 'Collapse' : 'Expand'}
+          >
+            {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
 
       {/* doctor */}
@@ -320,6 +340,7 @@ export default function RiwayatPage() {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [visits, setVisits] = useState<Visit[]>([]);
+  const [detailVisit, setDetailVisit] = useState<Visit | null>(null);
 
   useEffect(() => {
     initStore();
@@ -630,6 +651,7 @@ export default function RiwayatPage() {
                         key={v.id}
                         visit={v}
                         defaultOpen={idx === 0}
+                        onOpenDetail={(visit) => setDetailVisit(visit)}
                       />
                     ))}
                   </div>
@@ -639,6 +661,18 @@ export default function RiwayatPage() {
           )}
         </main>
       </div>
+
+      {/* Modal Detail Rekam Medis */}
+      {detailVisit && (
+        <VisitDetailModal
+          visit={detailVisit}
+          patient={selectedPatient ?? undefined}
+          onClose={() => setDetailVisit(null)}
+          onUpdated={() => {
+            if (selectedId) setVisits(visitStore.getByPatient(selectedId));
+          }}
+        />
+      )}
     </>
   );
 }

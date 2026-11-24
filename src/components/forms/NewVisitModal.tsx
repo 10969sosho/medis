@@ -256,12 +256,28 @@ export function NewVisitModal({
       };
     }
 
+    let inputDate = now;
+    if (selectedPoli === 'Ibu') {
+      const d = ibuData.tglKunjungan || ibuData.tglPersalinan;
+      if (d) {
+        inputDate = d.includes('T') ? d : `${d}T${now.split('T')[1] || '08:00:00'}`;
+      }
+    } else if (selectedPoli === 'Anak') {
+      const d = anakData.tglKunjunganKn || anakData.tglImunisasi;
+      if (d) {
+        inputDate = d.includes('T') ? d : `${d}T${now.split('T')[1] || '08:00:00'}`;
+      }
+    } else if (selectedPoli === 'Mom and Baby Spa' && spaData.tanggal) {
+      const d = spaData.tanggal;
+      inputDate = d.includes('T') ? d : `${d}T${now.split('T')[1] || '08:00:00'}`;
+    }
+
     const doctor = doctors.find((d) => d.name === doctorName) || { id: '', name: doctorName, role: '', sip: '', phone: '', poli: '' };
 
     const visit: Visit = {
       id: uid(),
       patientId: patient.id,
-      date: now,
+      date: inputDate,
       poli: selectedPoli,
       doctorName: doctor.name,
       subjective,
