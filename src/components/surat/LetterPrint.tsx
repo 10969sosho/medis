@@ -231,8 +231,9 @@ export function LetterPrint({ letter }: { letter: Letter }) {
               <p className="border-t border-slate-700 pt-1 font-semibold">{d.saksi2 || '..............................'}</p>
             </div>
             <div>
+              <p className="mb-0.5">Sidoarjo, <strong>........................................</strong></p>
               <p className="font-medium">Penolong Persalinan</p>
-              <div className="h-14" />
+              <div className="h-11" />
               <p className="border-t border-slate-700 pt-1 font-semibold underline">{d.signer || meta.defaultSigner}</p>
             </div>
           </div>
