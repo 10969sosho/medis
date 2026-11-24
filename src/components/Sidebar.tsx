@@ -3,9 +3,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, UserPlus, FileText, Users, ListOrdered,
-  Pill, CreditCard, Bell, BarChart2, Stethoscope, ChevronRight, ChevronDown
+  Pill, CreditCard, Bell, BarChart2, Stethoscope, ChevronRight, ChevronDown, LogOut
 } from 'lucide-react';
 import { useState } from 'react';
+import { useAuth } from '@/lib/AuthContext';
 
 const nav = [
   { href: '/', icon: LayoutDashboard, label: 'Dashboard', section: null },
@@ -39,6 +40,7 @@ const nav = [
 
 export default function Sidebar() {
   const path = usePathname();
+  const { user, logout } = useAuth();
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({ '/rekam-medis': true });
 
   return (
@@ -146,9 +148,21 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-5 py-3 border-t border-slate-700/60">
-        <p className="text-[11px] text-slate-600">© 2026 SIM-Klinik Pro</p>
+      {/* Footer & User Profile */}
+      <div className="px-4 py-3 border-t border-slate-700/60 bg-slate-950/30">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-white truncate">{user?.name || 'Admin Klinik'}</p>
+            <p className="text-[11px] text-slate-400 truncate">{user?.email || 'admin@klinik.com'}</p>
+          </div>
+          <button
+            onClick={logout}
+            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+            title="Keluar (Logout)"
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
       </div>
     </aside>
   );

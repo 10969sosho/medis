@@ -18,6 +18,13 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 export const api = {
+  // Auth
+  login: (credentials: { email: string; password: string }) =>
+    request<{ success: boolean; user: { id: number; name: string; email: string }; token: string; message?: string }>('/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    }),
+
   // Patients
   getPatients: () => request<any[]>('/patients'),
   savePatient: (patient: any) => request<any>('/patients', { method: 'POST', body: JSON.stringify(patient) }),
