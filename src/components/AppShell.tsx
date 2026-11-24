@@ -14,9 +14,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setMounted(true);
   }, []);
 
-  const isLoginPage = pathname === '/login' || pathname === '/login/' || (typeof window !== 'undefined' && window.location.pathname.startsWith('/login'));
+  const isLoginPage = pathname?.startsWith('/login');
 
-  // Di halaman login, langsung render children form login tanpa spinner & tanpa sidebar
+  // Di halaman login, render form login secara bersih tanpa sidebar
   if (isLoginPage) {
     return <main className="min-h-screen bg-slate-900">{children}</main>;
   }
@@ -33,11 +33,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Jika tidak ada user dan bukan di login, redirect ditangani oleh AuthContext
+  // Jika belum login dan bukan di login, AuthContext akan me-redirect
   if (!user) {
     return null;
   }
 
+  // Saat sudah login di halaman dashboard / rekam medis / dll, tampilkan Sidebar
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -45,4 +46,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
 

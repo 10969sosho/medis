@@ -72,19 +72,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     localStorage.removeItem(AUTH_USER_KEY);
     localStorage.removeItem(AUTH_TOKEN_KEY);
-    router.push('/login');
+    window.location.href = '/login';
   };
 
   useEffect(() => {
     if (!loading) {
-      const isLogin = pathname === '/login' || pathname === '/login/' || (typeof window !== 'undefined' && window.location.pathname.startsWith('/login'));
+      const isLogin = pathname?.startsWith('/login');
       if (!user && !isLogin) {
-        router.push('/login');
-      } else if (user && isLogin) {
-        router.push('/');
+        window.location.href = '/login';
       }
     }
-  }, [user, loading, pathname, router]);
+  }, [user, loading, pathname]);
 
   return (
     <AuthContext.Provider value={{ user, token, loading, login, logout }}>

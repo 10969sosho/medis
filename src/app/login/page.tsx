@@ -21,7 +21,7 @@ export default function LoginPage() {
     try {
       const res = await login(email, password);
       if (res.success) {
-        router.push('/');
+        window.location.href = '/';
       } else {
         setError(res.message || 'Email atau password salah.');
       }
