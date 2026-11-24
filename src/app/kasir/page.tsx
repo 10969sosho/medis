@@ -1,10 +1,12 @@
 'use client';
 
 import { Suspense, useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'next/navigation';
 import {
   initStore,
   syncFromBackend,
+  subscribeStore,
   visitStore,
   patientStore,
   drugStore,
@@ -295,6 +297,10 @@ function KasirContent() {
 
   useEffect(() => {
     loadData();
+    const unsub = subscribeStore(() => {
+      loadData();
+    });
+
     syncFromBackend().then(() => {
       const refreshedUnpaid = loadData();
       const pid = searchParams.get('patientId');
@@ -321,6 +327,8 @@ function KasirContent() {
         openPayModal(target.visit, target.patientName, target.patientRM);
       }
     }
+
+    return () => unsub();
   }, [searchParams]);
 
   // ── derived ──
@@ -448,25 +456,32 @@ function KasirContent() {
             padding: 0 !important;
             background: #fff !important;
           }
-          body > *:not(.thermal-receipt-container) {
+          body > *:not(.receipt-print-portal) {
+            display: none !important;
+          }
+          .receipt-print-portal {
+            position: static !important;
+            inset: auto !important;
+            display: block !important;
+            background: #fff !important;
+            padding: 0 !important;
+          }
+          .receipt-print-portal .no-print {
             display: none !important;
           }
           .thermal-receipt-container {
             display: block !important;
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
+            position: static !important;
             width: 58mm !important;
             max-width: 58mm !important;
             margin: 0 auto !important;
-            padding: 3mm 2mm !important;
+            padding: 2mm 1.5mm !important;
             font-size: 11px !important;
             color: #000 !important;
             background: #fff !important;
             box-sizing: border-box !important;
-          }
-          .no-print {
-            display: none !important;
+            border: none !important;
+            box-shadow: none !important;
           }
         }
       `}</style>
@@ -942,11 +957,11 @@ function KasirContent() {
       )}
 
       {/* ══════════════════════════ SUCCESS / INVOICE MODAL ════════════════════ */}
-      {successData && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="no-print bg-white rounded-2xl p-6 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
+      {successData && typeof document !== 'undefined' && createPortal(
+        <div className="receipt-print-portal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
             {/* Success header */}
-            <div className="text-center mb-5">
+            <div className="no-print text-center mb-5">
               <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <CheckCircle2 className="w-7 h-7 text-green-600" />
               </div>
@@ -957,7 +972,7 @@ function KasirContent() {
             </div>
 
             {/* Invoice preview */}
-            <div className="border border-slate-200 rounded-xl p-4 mb-5 bg-slate-50">
+            <div className="border border-slate-200 rounded-xl p-4 mb-5 bg-slate-50 print:border-none print:p-0 print:m-0 print:bg-white">
               <Invoice
                 transaction={successData.transaction}
                 patientName={successData.patientName}
@@ -968,7 +983,7 @@ function KasirContent() {
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-3">
+            <div className="no-print flex gap-3">
               <button
                 onClick={handlePrint}
                 className="flex-1 flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl text-sm"
@@ -984,7 +999,8 @@ function KasirContent() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

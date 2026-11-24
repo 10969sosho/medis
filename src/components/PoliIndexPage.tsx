@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { initStore, syncFromBackend, patientStore, visitStore, drugStore, idr, calcAge, fmtDate, fmtDateTime, uid } from '@/lib/store';
+import { initStore, syncFromBackend, subscribeStore, patientStore, visitStore, drugStore, idr, calcAge, fmtDate, fmtDateTime, uid } from '@/lib/store';
 import type { Patient, Visit, Prescription, Drug } from '@/lib/types';
 import { NewVisitModal } from '@/components/forms/NewVisitModal';
 import {
@@ -523,6 +523,11 @@ function PoliContent({ cfg }: { cfg: PoliCfg }) {
 
   useEffect(() => {
     load();
+    const unsub = subscribeStore(() => {
+      setPatients(patientStore.getAll());
+      setVisits(visitStore.getAll());
+    });
+
     syncFromBackend().then(() => {
       setPatients(patientStore.getAll());
       setVisits(visitStore.getAll());
@@ -538,6 +543,7 @@ function PoliContent({ cfg }: { cfg: PoliCfg }) {
     } else if (searchParams.get('tambah')) {
       setShowAdd(true);
     }
+    return () => unsub();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 

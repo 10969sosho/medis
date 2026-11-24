@@ -22,6 +22,7 @@ import {
 import {
   initStore,
   syncFromBackend,
+  subscribeStore,
   queueStore,
   patientStore,
   uid,
@@ -105,10 +106,16 @@ export default function AntrianPage() {
 
   useEffect(() => {
     load();
+    const unsub = subscribeStore(() => {
+      setQueue(queueStore.getToday());
+      setPatients(patientStore.getAll());
+    });
+
     syncFromBackend().then(() => {
       setQueue(queueStore.getToday());
       setPatients(patientStore.getAll());
     });
+    return () => unsub();
   }, [load]);
 
   // ── Fullscreen toggle ─────────────────────────────────────────────────

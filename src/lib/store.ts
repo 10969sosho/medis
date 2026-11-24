@@ -190,6 +190,26 @@ const seedDoctors: Doctor[] = [
 ];
 
 // --- Generic CRUD helpers ---
+type StoreListener = () => void;
+const listeners = new Set<StoreListener>();
+
+export function subscribeStore(fn: StoreListener) {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
+function notifyStoreChange() {
+  listeners.forEach((fn) => {
+    try {
+      fn();
+    } catch (e) {
+      console.error(e);
+    }
+  });
+}
+
 function load<T>(key: string): T[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -202,6 +222,7 @@ function load<T>(key: string): T[] {
 function save<T>(key: string, data: T[]): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(key, JSON.stringify(data));
+  notifyStoreChange();
 }
 
 function initKey<T>(key: string, seed: T[]): void {
@@ -364,8 +385,22 @@ export async function syncFromBackend(): Promise<void> {
   }
 }
 
+// --- Seed Data Version ---
+const DB_VERSION_KEY = 'klinik_db_version';
+const CURRENT_DB_VERSION = '20261124_v3';
+
 export function initStore(): void {
   syncFromBackend().catch(() => {});
+  if (typeof window !== 'undefined') {
+    const v = localStorage.getItem(DB_VERSION_KEY);
+    if (v !== CURRENT_DB_VERSION) {
+      // Bersihkan cache usang agar data terbaru dari server MySQL yang menjadi sumber utama
+      localStorage.removeItem(KEYS.visits);
+      localStorage.removeItem(KEYS.transactions);
+      localStorage.removeItem(KEYS.queue);
+      localStorage.setItem(DB_VERSION_KEY, CURRENT_DB_VERSION);
+    }
+  }
   initKey(KEYS.patients, seedPatients);
   initKey(KEYS.visits, seedVisits);
   initKey(KEYS.drugs, seedDrugs);
