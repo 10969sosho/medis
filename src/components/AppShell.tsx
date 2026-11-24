@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import Sidebar from '@/components/Sidebar';
@@ -8,13 +8,21 @@ import Sidebar from '@/components/Sidebar';
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, loading } = useAuth();
-  const isLoginPage = pathname === '/login';
+  const [mounted, setMounted] = useState(false);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isLoginPage = pathname === '/login' || pathname === '/login/' || (typeof window !== 'undefined' && window.location.pathname.startsWith('/login'));
+
+  // Di halaman login, langsung render children form login tanpa spinner & tanpa sidebar
   if (isLoginPage) {
     return <main className="min-h-screen bg-slate-900">{children}</main>;
   }
 
-  if (loading) {
+  // Sebelum mount di client atau saat memeriksa token untuk halaman terproteksi
+  if (!mounted || loading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -25,6 +33,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Jika tidak ada user dan bukan di login, redirect ditangani oleh AuthContext
   if (!user) {
     return null;
   }
@@ -36,3 +45,4 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+

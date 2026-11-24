@@ -448,40 +448,55 @@ function KasirContent() {
       <style>{`
         @media print {
           @page {
-            size: 58mm auto;
-            margin: 0;
+            size: auto;
+            margin: 0mm;
           }
           html, body {
             margin: 0 !important;
             padding: 0 !important;
             background: #fff !important;
+            width: 100% !important;
           }
           body > *:not(.receipt-print-portal) {
             display: none !important;
           }
           .receipt-print-portal {
-            position: static !important;
-            inset: auto !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
             display: block !important;
             background: #fff !important;
             padding: 0 !important;
+            margin: 0 !important;
+          }
+          .receipt-print-portal > div {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+            max-height: none !important;
+            overflow: visible !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            background: transparent !important;
           }
           .receipt-print-portal .no-print {
             display: none !important;
           }
           .thermal-receipt-container {
             display: block !important;
-            position: static !important;
-            width: 58mm !important;
-            max-width: 58mm !important;
-            margin: 0 auto !important;
-            padding: 2mm 1.5mm !important;
+            position: relative !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 2mm 3mm !important;
             font-size: 11px !important;
             color: #000 !important;
             background: #fff !important;
             box-sizing: border-box !important;
             border: none !important;
             box-shadow: none !important;
+            border-radius: 0 !important;
           }
         }
       `}</style>

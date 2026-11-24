@@ -77,10 +77,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading) {
-      const isLoginPage = pathname === '/login';
-      if (!user && !isLoginPage) {
+      const isLogin = pathname === '/login' || pathname === '/login/' || (typeof window !== 'undefined' && window.location.pathname.startsWith('/login'));
+      if (!user && !isLogin) {
         router.push('/login');
-      } else if (user && isLoginPage) {
+      } else if (user && isLogin) {
         router.push('/');
       }
     }
