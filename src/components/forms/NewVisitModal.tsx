@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Patient, Visit, Drug, Prescription, Doctor } from '@/lib/types';
 import { uid, idr } from '@/lib/store';
-import { doctorStore, patientStore, drugStore, visitStore, calcAge } from '@/lib/store';
+import { doctorStore, patientStore, drugStore, visitStore, queueStore, calcAge } from '@/lib/store';
 import { FormRekamMedisIbu, FormIbuData } from '@/components/forms/FormRekamMedisIbu';
 import { FormRekamMedisAnak, FormAnakData } from '@/components/forms/FormRekamMedisAnak';
 import { FormRekamMedisSpa, FormSpaData } from '@/components/forms/FormRekamMedisSpa';
@@ -13,6 +13,7 @@ import { X, CheckCircle2, ChevronRight, Stethoscope, Pill, FlaskConical, Clock, 
 interface NewVisitModalProps {
   /** Jika diisi (dari query ?patientId=), pasien terkunci dan tidak bisa diganti */
   patientId?: string;
+  queueId?: string;
   initialPoli?: string;
   /** Kunci pilihan poli sesuai halaman index poli */
   lockPoli?: boolean;
@@ -22,6 +23,7 @@ interface NewVisitModalProps {
 
 export function NewVisitModal({
   patientId,
+  queueId,
   initialPoli = 'Umum',
   lockPoli = false,
   onClose,
@@ -301,6 +303,19 @@ export function NewVisitModal({
     // Simpan kunjungan + kurangi stok obat resep (tagihan otomatis masuk antrean kasir)
     visitStore.add(visit);
     visit.prescriptions.forEach((rx) => drugStore.deductStock(rx.drugId, rx.quantity));
+
+    // Update antrian terkait jika ada queueId atau untuk pasien hari ini
+    if (queueId) {
+      const q = queueStore.getAll().find((item) => item.id === queueId);
+      if (q) {
+        queueStore.update({ ...q, status: 'done' });
+      }
+    } else if (patient.id) {
+      const todayQ = queueStore.getQueueForPatientToday(patient.id);
+      if (todayQ && todayQ.status !== 'done') {
+        queueStore.update({ ...todayQ, status: 'done' });
+      }
+    }
 
     onSave(visit);
   }

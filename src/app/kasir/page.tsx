@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { Suspense, useEffect, useState, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   initStore,
+  syncFromBackend,
   visitStore,
   patientStore,
   drugStore,
@@ -242,8 +244,9 @@ function Invoice({
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-export default function KasirPage() {
+// ─── Main Page Content ────────────────────────────────────────────────────────
+function KasirContent() {
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<'unpaid' | 'history'>('unpaid');
 
   // unpaid list
@@ -287,11 +290,38 @@ export default function KasirPage() {
       b.createdAt.localeCompare(a.createdAt),
     );
     setTransactions(allTx);
+    return unpaid;
   }
 
   useEffect(() => {
     loadData();
-  }, []);
+    syncFromBackend().then(() => {
+      const refreshedUnpaid = loadData();
+      const pid = searchParams.get('patientId');
+      if (pid) {
+        const target = refreshedUnpaid.find((u) => u.visit.patientId === pid);
+        if (target) {
+          openPayModal(target.visit, target.patientName, target.patientRM);
+        }
+      }
+    });
+
+    const pid = searchParams.get('patientId');
+    if (pid) {
+      const currentUnpaid = visitStore.getUnpaid().map((v) => {
+        const p = patientStore.get(v.patientId);
+        return {
+          visit: v,
+          patientName: p?.name ?? 'Pasien Tidak Dikenal',
+          patientRM: p?.rm ?? '-',
+        };
+      });
+      const target = currentUnpaid.find((u) => u.visit.patientId === pid);
+      if (target) {
+        openPayModal(target.visit, target.patientName, target.patientRM);
+      }
+    }
+  }, [searchParams]);
 
   // ── derived ──
   const todayTx = transactions.filter((t) => t.date.startsWith(todayISO()));
@@ -957,5 +987,13 @@ export default function KasirPage() {
         </div>
       )}
     </>
+  );
+}
+
+export default function KasirPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat modul Kasir...</div>}>
+      <KasirContent />
+    </Suspense>
   );
 }

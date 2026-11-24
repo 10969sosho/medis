@@ -18,6 +18,7 @@ import {
   CalendarDays,
   User,
   ClipboardList,
+  Edit3,
 } from 'lucide-react';
 
 export function LetterPage({ meta }: { meta: LetterMeta }) {
@@ -25,6 +26,7 @@ export function LetterPage({ meta }: { meta: LetterMeta }) {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [editingLetter, setEditingLetter] = useState<Letter | null>(null);
   const [preview, setPreview] = useState<Letter | null>(null);
   const [query, setQuery] = useState('');
   const [nextNumber, setNextNumber] = useState('');
@@ -64,6 +66,26 @@ export function LetterPage({ meta }: { meta: LetterMeta }) {
     customKopImg?: string;
     data: Record<string, string>;
   }) {
+    if (editingLetter) {
+      const updated: Letter = {
+        ...editingLetter,
+        number: payload.number,
+        patientId: payload.patientId,
+        patientName: payload.patientName,
+        patientRM: payload.patientRM,
+        date: payload.date,
+        kop: payload.kop,
+        customKopImg: payload.customKopImg,
+        data: payload.data,
+      };
+      letterStore.update(updated);
+      load();
+      setShowForm(false);
+      setEditingLetter(null);
+      setPreview(updated);
+      return;
+    }
+
     const letter: Letter = {
       id: uid(),
       type: meta.type,
@@ -81,6 +103,16 @@ export function LetterPage({ meta }: { meta: LetterMeta }) {
     load();
     setShowForm(false);
     setPreview(letter);
+  }
+
+  function handleOpenCreate() {
+    setEditingLetter(null);
+    setShowForm(true);
+  }
+
+  function handleOpenEdit(letter: Letter) {
+    setEditingLetter(letter);
+    setShowForm(true);
   }
 
   function handleDelete(letter: Letter) {
@@ -151,7 +183,7 @@ export function LetterPage({ meta }: { meta: LetterMeta }) {
             </div>
             <button
               type="button"
-              onClick={() => setShowForm(true)}
+              onClick={handleOpenCreate}
               className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-md shadow-teal-600/20"
             >
               <PlusCircle className="w-4 h-4" />
@@ -227,7 +259,7 @@ export function LetterPage({ meta }: { meta: LetterMeta }) {
             {!query && (
               <button
                 type="button"
-                onClick={() => setShowForm(true)}
+                onClick={handleOpenCreate}
                 className="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-teal-600/20"
               >
                 <PlusCircle className="w-4 h-4" />
@@ -284,6 +316,15 @@ export function LetterPage({ meta }: { meta: LetterMeta }) {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
+                            onClick={() => handleOpenEdit(l)}
+                            className="flex items-center gap-1 bg-white border border-slate-200 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 text-slate-600 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-colors whitespace-nowrap"
+                            title="Edit surat"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => setPreview(l)}
                             className="flex items-center gap-1 bg-white border border-slate-200 hover:bg-teal-50 hover:border-teal-300 hover:text-teal-700 text-slate-600 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-colors whitespace-nowrap"
                           >
@@ -315,14 +356,19 @@ export function LetterPage({ meta }: { meta: LetterMeta }) {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
             <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
               <div>
-                <h2 className="text-base font-bold">{meta.label}</h2>
+                <h2 className="text-base font-bold">
+                  {editingLetter ? `Edit ${meta.label}` : meta.label}
+                </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
                   {meta.kop === 'al-faruq' ? 'Kop Klinik Medis Al Faruq' : 'Kop Praktek Mandiri Bidan Mulyani'}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingLetter(null);
+                }}
                 className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -331,10 +377,14 @@ export function LetterPage({ meta }: { meta: LetterMeta }) {
             <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
               <LetterForm
                 meta={meta}
+                initial={editingLetter}
                 patients={patients}
                 nextNumber={nextNumber}
                 onSubmit={handleSave}
-                onCancel={() => setShowForm(false)}
+                onCancel={() => {
+                  setShowForm(false);
+                  setEditingLetter(null);
+                }}
               />
             </div>
           </div>

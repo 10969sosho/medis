@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { initStore, patientStore, visitStore, drugStore, idr, calcAge, fmtDate, fmtDateTime, uid } from '@/lib/store';
+import { initStore, syncFromBackend, patientStore, visitStore, drugStore, idr, calcAge, fmtDate, fmtDateTime, uid } from '@/lib/store';
 import type { Patient, Visit, Prescription, Drug } from '@/lib/types';
 import { NewVisitModal } from '@/components/forms/NewVisitModal';
 import {
@@ -509,6 +509,7 @@ function PoliContent({ cfg }: { cfg: PoliCfg }) {
   const [query, setQuery] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [lockedPatientId, setLockedPatientId] = useState<string | undefined>();
+  const [lockedQueueId, setLockedQueueId] = useState<string | undefined>();
   const [showAdd, setShowAdd] = useState(false);
   const [detail, setDetail] = useState<Visit | null>(null);
   const [saved, setSaved] = useState<Visit | null>(null);
@@ -522,7 +523,15 @@ function PoliContent({ cfg }: { cfg: PoliCfg }) {
 
   useEffect(() => {
     load();
+    syncFromBackend().then(() => {
+      setPatients(patientStore.getAll());
+      setVisits(visitStore.getAll());
+    });
+
     const pid = searchParams.get('patientId');
+    const qid = searchParams.get('queueId') || undefined;
+    if (qid) setLockedQueueId(qid);
+
     if (pid && patientStore.get(pid)) {
       setLockedPatientId(pid);
       setShowAdd(true);
@@ -817,6 +826,7 @@ function PoliContent({ cfg }: { cfg: PoliCfg }) {
       {showAdd && (
         <NewVisitModal
           patientId={lockedPatientId}
+          queueId={lockedQueueId}
           initialPoli={cfg.key}
           lockPoli
           onClose={() => setShowAdd(false)}

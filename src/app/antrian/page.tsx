@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import {
   initStore,
+  syncFromBackend,
   queueStore,
   patientStore,
   uid,
@@ -104,6 +105,10 @@ export default function AntrianPage() {
 
   useEffect(() => {
     load();
+    syncFromBackend().then(() => {
+      setQueue(queueStore.getToday());
+      setPatients(patientStore.getAll());
+    });
   }, [load]);
 
   // ── Fullscreen toggle ─────────────────────────────────────────────────
@@ -415,20 +420,13 @@ export default function AntrianPage() {
                                 Panggil Ulang
                               </button>
                               <Link
-                                href={`${rmPoliPath(item.poli)}?patientId=${item.patientId}`}
+                                href={`${rmPoliPath(item.poli)}?patientId=${item.patientId}&queueId=${item.id}`}
                                 onClick={() => updateStatus(item, 'in-progress')}
                                 className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shadow-sm"
                               >
                                 <Stethoscope size={13} />
                                 Periksa / Isi RM
                               </Link>
-                              <button
-                                onClick={() => updateStatus(item, 'in-progress')}
-                                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
-                              >
-                                <ArrowRight size={13} />
-                                Masuk Periksa
-                              </button>
                               <button
                                 onClick={() => updateStatus(item, 'skipped')}
                                 className="flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 text-slate-600 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
