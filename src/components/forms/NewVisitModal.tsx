@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Patient, Visit, Drug, Prescription, Doctor } from '@/lib/types';
 import { uid, idr } from '@/lib/store';
 import { doctorStore, patientStore, drugStore, visitStore, calcAge } from '@/lib/store';
@@ -8,7 +8,7 @@ import { FormRekamMedisIbu, FormIbuData } from '@/components/forms/FormRekamMedi
 import { FormRekamMedisAnak, FormAnakData } from '@/components/forms/FormRekamMedisAnak';
 import { FormRekamMedisSpa, FormSpaData } from '@/components/forms/FormRekamMedisSpa';
 import { FormRekamMedisUmum, FormUmumData } from '@/components/forms/FormRekamMedisUmum';
-import { X, CheckCircle2, ChevronRight, Stethoscope, Pill, FlaskConical, Clock, PlusCircle, Trash2, HeartPulse, Scale, ShieldCheck, AlertTriangle, UserCircle2, Search, Lock } from 'lucide-react';
+import { X, CheckCircle2, ChevronRight, Stethoscope, Pill, FlaskConical, Clock, PlusCircle, Trash2, HeartPulse, Scale, ShieldCheck, AlertTriangle, UserCircle2, Search, Lock, ChevronDown } from 'lucide-react';
 
 interface NewVisitModalProps {
   /** Jika diisi (dari query ?patientId=), pasien terkunci dan tidak bisa diganti */
@@ -36,7 +36,22 @@ export function NewVisitModal({
   const lockedPatient = Boolean(patientId);
   const [selectedPatientId, setSelectedPatientId] = useState<string>(patientId ?? '');
   const [patientSearch, setPatientSearch] = useState('');
+  const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
+  const patientDropdownRef = useRef<HTMLDivElement>(null);
   const patient: Patient | undefined = patients.find((p) => p.id === selectedPatientId);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        patientDropdownRef.current &&
+        !patientDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsPatientDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const drugs: Drug[] = useMemo(() => drugStore.getAll(), []);
 
@@ -301,44 +316,129 @@ export function NewVisitModal({
           </button>
         </div>
 
-        {/* Pilih Pasien + Kartu Ringkas */}
+        {/* 1 Field Pilih & Cari Pasien + Kartu Ringkas */}
         <div className="px-6 py-3 bg-white border-b border-slate-200 space-y-3">
-          <div className="flex flex-wrap items-end gap-2">
-            {!lockedPatient && (
-              <div className="relative flex-1 min-w-[180px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+          <div className="relative" ref={patientDropdownRef}>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">
+              Pasien <span className="text-red-500">*</span>
+            </label>
+
+            {lockedPatient ? (
+              <div className="flex items-center justify-between border border-teal-200 bg-teal-50/60 rounded-xl px-3 py-2 text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <UserCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
+                  <span className="font-semibold text-teal-900 truncate">
+                    {patient ? `${patient.name} (${patient.rm}) — ${patient.insurance}` : 'Memuat data pasien...'}
+                  </span>
+                </div>
+                <span className="flex items-center gap-1 text-[11px] font-bold text-teal-700 bg-teal-100/80 px-2.5 py-1 rounded-lg shrink-0">
+                  <Lock className="w-3 h-3" />
+                  Terkunci dari Antrian
+                </span>
+              </div>
+            ) : (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 <input
                   type="text"
-                  value={patientSearch}
-                  onChange={(e) => setPatientSearch(e.target.value)}
-                  placeholder="Cari nama / No RM / NIK..."
-                  className="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs bg-white focus:ring-2 focus:ring-teal-500"
+                  value={
+                    isPatientDropdownOpen || patientSearch
+                      ? patientSearch
+                      : patient
+                      ? `${patient.name} (${patient.rm}) — ${patient.insurance}`
+                      : ''
+                  }
+                  onChange={(e) => {
+                    setPatientSearch(e.target.value);
+                    if (!isPatientDropdownOpen) setIsPatientDropdownOpen(true);
+                  }}
+                  onFocus={() => {
+                    setIsPatientDropdownOpen(true);
+                  }}
+                  placeholder="Cari pasien (Ketik Nama, No RM, atau NIK)..."
+                  className={`w-full border rounded-xl pl-9 pr-16 py-2.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
+                    patient && !isPatientDropdownOpen && !patientSearch
+                      ? 'border-teal-400 font-semibold text-teal-950 bg-teal-50/30'
+                      : 'border-slate-200 text-slate-800 placeholder-slate-400'
+                  }`}
                 />
+
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  {(patient || patientSearch) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedPatientId('');
+                        setPatientSearch('');
+                        setIsPatientDropdownOpen(true);
+                      }}
+                      className="p-1 text-slate-400 hover:text-red-600 rounded-lg hover:bg-slate-100 transition-colors"
+                      title="Hapus / Cari Ulang"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsPatientDropdownOpen((prev) => !prev)}
+                    className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+                    title="Buka / Tutup Daftar"
+                  >
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                        isPatientDropdownOpen ? 'rotate-180 text-teal-600' : ''
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Dropdown Popover List Pasien */}
+                {isPatientDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 max-h-64 overflow-y-auto divide-y divide-slate-100 animate-in fade-in-50 duration-150">
+                    {patientOptions.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-slate-400">
+                        Pasien tidak ditemukan dengan kata kunci &quot;{patientSearch}&quot;
+                      </div>
+                    ) : (
+                      patientOptions.map((p) => {
+                        const isSelected = p.id === selectedPatientId;
+                        return (
+                          <div
+                            key={p.id}
+                            onClick={() => {
+                              setSelectedPatientId(p.id);
+                              setPatientSearch('');
+                              setIsPatientDropdownOpen(false);
+                            }}
+                            className={`px-4 py-2.5 text-xs cursor-pointer transition-colors flex items-center justify-between gap-3 ${
+                              isSelected
+                                ? 'bg-teal-50 text-teal-900 font-semibold'
+                                : 'hover:bg-slate-50 text-slate-800'
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-slate-900 truncate">
+                                  {p.name}
+                                </span>
+                                <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 shrink-0">
+                                  {p.rm}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                                NIK: {p.nik} · {calcAge(p.dob)} · {p.gender === 'P' ? 'Perempuan' : 'Laki-Laki'} · {p.insurance}
+                              </p>
+                            </div>
+                            {isSelected && (
+                              <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
               </div>
-            )}
-            <div className={`min-w-[220px] ${lockedPatient ? 'w-full' : 'flex-1'}`}>
-              <select
-                value={selectedPatientId}
-                onChange={(e) => setSelectedPatientId(e.target.value)}
-                disabled={lockedPatient}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-teal-500 font-medium text-slate-800 disabled:bg-slate-50 disabled:text-slate-600"
-              >
-                <option value="">-- Pilih Pasien --</option>
-                {patientOptions.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.rm}) — {p.insurance}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {lockedPatient && (
-              <span className="flex items-center gap-1.5 text-[11px] font-bold text-teal-700 bg-teal-50 border border-teal-200 px-3 py-2 rounded-xl whitespace-nowrap">
-                <Lock className="w-3.5 h-3.5" />
-                Terkunci oleh antrian (?patientId)
-              </span>
-            )}
-            {!lockedPatient && patientSearch && patientOptions.length === 0 && (
-              <span className="text-[11px] text-slate-400 py-2">Pasien tidak ditemukan</span>
             )}
           </div>
 

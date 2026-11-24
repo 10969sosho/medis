@@ -35,8 +35,7 @@ export default function MasterDokterPage() {
   // Derived
   const filtered = doctors.filter((d) =>
     d.name.toLowerCase().includes(search.toLowerCase()) ||
-    (d.role && d.role.toLowerCase().includes(search.toLowerCase())) ||
-    (d.poli && d.poli.toLowerCase().includes(search.toLowerCase()))
+    (d.role && d.role.toLowerCase().includes(search.toLowerCase()))
   );
 
   // Form validation
@@ -137,14 +136,13 @@ export default function MasterDokterPage() {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-slate-500">Role</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-slate-500">SIP</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-slate-500">No. Telepon</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-slate-500">Poli</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-slate-500">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-sm text-slate-400">
+                  <td colSpan={5} className="py-12 text-center text-sm text-slate-400">
                     <Search size={32} className="mx-auto mb-2 opacity-30" />
                     <p>Dokter tidak ditemukan</p>
                   </td>
@@ -156,7 +154,6 @@ export default function MasterDokterPage() {
                   <td className="px-4 py-3 text-slate-600 text-xs">{doc.role}</td>
                   <td className="px-4 py-3 text-slate-600 text-xs">{doc.sip || '-'}</td>
                   <td className="px-4 py-3 text-slate-600 text-xs">{doc.phone || '-'}</td>
-                  <td className="px-4 py-3 text-slate-600 text-xs">{doc.poli || '-'}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1.5">
                       <button
@@ -241,11 +238,14 @@ export default function MasterDokterPage() {
                   }
                   className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white border-slate-200"
                 >
+                  <option value="">-- Pilih Role --</option>
+                  <option value="Umum">Umum</option>
                   <option value="Sp.PD">Sp.PD</option>
                   <option value="Sp.OG">Sp.OG</option>
                   <option value="Sp.A">Sp.A</option>
                   <option value="S.Tr.Keb">S.Tr.Keb</option>
-                  <option value="Umum">Umum</option>
+                  <option value="Bidan">Bidan</option>
+                  <option value="Perawat">Perawat</option>
                 </select>
                 {formErrors.role && (
                   <p className="mt-0.5 text-xs text-red-500">{formErrors.role}</p>
@@ -278,26 +278,6 @@ export default function MasterDokterPage() {
                   }
                   className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white border-slate-200"
                 />
-              </div>
-
-              {/* Poli */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Poli
-                </label>
-                <select
-                  value={form.poli || ''}
-                  onChange={(e) =>
-                    setForm({ ...form, poli: e.target.value })
-                  }
-                  className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white border-slate-200"
-                >
-                  <option value="">-- Pilih Poli --</option>
-                  <option value="Umum">Umum</option>
-                  <option value="Ibu">Ibu</option>
-                  <option value="Anak">Anak</option>
-                  <option value="Mom and Baby Spa">Mom and Baby Spa</option>
-                </select>
               </div>
 
               {/* Modal actions */}
