@@ -60,6 +60,8 @@ export function LetterPage({ meta }: { meta: LetterMeta }) {
     patientId: string;
     patientName: string;
     patientRM: string;
+    kop?: string;
+    customKopImg?: string;
     data: Record<string, string>;
   }) {
     const letter: Letter = {
@@ -70,6 +72,8 @@ export function LetterPage({ meta }: { meta: LetterMeta }) {
       patientName: payload.patientName,
       patientRM: payload.patientRM,
       date: payload.date,
+      kop: payload.kop,
+      customKopImg: payload.customKopImg,
       data: payload.data,
       createdAt: new Date().toISOString(),
     };

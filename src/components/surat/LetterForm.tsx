@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import type { Letter, Patient, Doctor } from '@/lib/types';
-import { calcAge, doctorStore } from '@/lib/store';
+import type { Letter, Patient, Doctor, KopOption } from '@/lib/types';
+import { calcAge, doctorStore, customKopStore, uid } from '@/lib/store';
 import { LetterMeta } from '@/lib/letterConfig';
-import { Save, User, Stethoscope, Search, CheckCircle2, ChevronDown, X } from 'lucide-react';
+import { Save, User, Stethoscope, Search, CheckCircle2, ChevronDown, X, Upload, Image as ImageIcon } from 'lucide-react';
 
 const inputCls =
   'w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-teal-500';
@@ -31,6 +31,17 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+const UMUR_UNIT_RE = /\b(thn|th|tahun|bulan|bln|minggu|hari)\b/i;
+
+function formatUmur(raw: string) {
+  const v = (raw || '').trim();
+  if (!v) return '';
+  if (UMUR_UNIT_RE.test(v)) {
+    return v.replace(/\btahun\b/gi, 'THN').replace(/\bth\b/gi, 'THN');
+  }
+  return /^\d+$/.test(v) ? `${v} THN` : v;
+}
+
 export interface LetterFormProps {
   meta: LetterMeta;
   initial?: Letter | null;
@@ -42,6 +53,8 @@ export interface LetterFormProps {
     patientId: string;
     patientName: string;
     patientRM: string;
+    kop?: string;
+    customKopImg?: string;
     data: Record<string, string>;
   }) => void;
   onCancel: () => void;
@@ -61,10 +74,19 @@ export function LetterForm({
   const [signer, setSigner] = useState(
     initial?.data?.signer || meta.defaultSigner,
   );
+  const [kop, setKop] = useState<string>(initial?.kop || meta.kop);
+  const [customKopImg, setCustomKopImg] = useState<string>(initial?.customKopImg || '');
+  const [savedKops, setSavedKops] = useState<KopOption[]>([]);
   const [data, setData] = useState<Record<string, string>>(initial?.data ?? {});
   const [patientSearch, setPatientSearch] = useState('');
   const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
   const patientDropdownRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load custom kop dari customKopStore
+  useEffect(() => {
+    setSavedKops(customKopStore.getAll());
+  }, []);
 
   // Ambil daftar dokter dari doctorStore
   const doctors = useMemo(() => {
@@ -118,23 +140,154 @@ export function LetterForm({
   const setField = (key: string, val: string) =>
     setData((d) => ({ ...d, [key]: val }));
 
+  function handleUploadKop(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('File harus berupa gambar (JPG/PNG)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      const newKop: KopOption = {
+        id: `custom-${uid()}`,
+        name: file.name.replace(/\.[^/.]+$/, ''),
+        image: base64,
+      };
+      customKopStore.add(newKop);
+      setSavedKops(customKopStore.getAll());
+      setKop(newKop.id);
+      setCustomKopImg(base64);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
+  function handleSelectKop(kopId: string) {
+    setKop(kopId);
+    if (kopId === 'al-faruq' || kopId === 'bidan-mulyani') {
+      setCustomKopImg('');
+    } else {
+      const found = savedKops.find((k) => k.id === kopId);
+      if (found && found.image) {
+        setCustomKopImg(found.image);
+      }
+    }
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const patientName =
       selectedPatient?.name || data.nama || data.namaBayi || data.namaAlmarhum || '-';
     const patientRM = selectedPatient?.rm || '-';
+
+    // Format umur otomatis dengan suffix THN jika ada
+    const formattedData = { ...data };
+    if (formattedData.umur) formattedData.umur = formatUmur(formattedData.umur);
+    if (formattedData.umurIbu) formattedData.umurIbu = formatUmur(formattedData.umurIbu);
+    if (formattedData.umurAyah) formattedData.umurAyah = formatUmur(formattedData.umurAyah);
+
     onSubmit({
       number,
       date,
       patientId,
       patientName,
       patientRM,
-      data: { ...data, signer },
+      kop,
+      customKopImg,
+      data: { ...formattedData, signer },
     });
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Pilihan Kop Surat */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+            <ImageIcon className="w-3.5 h-3.5 text-teal-600" />
+            Pilihan Kop Surat
+          </p>
+          <div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              className="hidden"
+              onChange={handleUploadKop}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-[11px] font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 transition-colors"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Upload Kop Gambar Baru
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label="Gunakan Kop Surat:">
+            <select
+              value={kop}
+              onChange={(e) => handleSelectKop(e.target.value)}
+              className={inputCls}
+            >
+              <optgroup label="Kop Standar">
+                <option value="al-faruq">Klinik Medis Al Faruq</option>
+                <option value="bidan-mulyani">Praktek Mandiri Bidan Mulyani</option>
+              </optgroup>
+              {savedKops.length > 0 && (
+                <optgroup label="Kop Custom Tersimpan">
+                  {savedKops.map((k) => (
+                    <option key={k.id} value={k.id}>
+                      {k.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+          </Field>
+
+          {/* Preview miniatur kop terpilih */}
+          <div className="border border-slate-200 rounded-xl p-2 bg-slate-50/50 flex items-center justify-between gap-3">
+            <div className="text-[11px] text-slate-600">
+              <span className="font-semibold block text-slate-700">Preview Kop:</span>
+              <span className="text-[10px] text-slate-400">
+                {kop === 'al-faruq'
+                  ? 'Klinik Medis Al Faruq (Standar)'
+                  : kop === 'bidan-mulyani'
+                  ? 'Bidan Mulyani (Standar)'
+                  : savedKops.find((k) => k.id === kop)?.name || 'Kop Custom'}
+              </span>
+            </div>
+            {customKopImg ? (
+              <img
+                src={customKopImg}
+                alt="Kop Preview"
+                className="h-10 max-w-[140px] object-contain border rounded bg-white p-0.5"
+              />
+            ) : kop === 'al-faruq' ? (
+              <img
+                src="/kop/logo-alfaruq.png"
+                alt="Al Faruq"
+                className="h-10 object-contain"
+              />
+            ) : (
+              <img
+                src="/kop/logo-bidan-mulyani.png"
+                alt="Bidan Mulyani"
+                className="h-10 object-contain"
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Pasien & nomor */}
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
         <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
@@ -323,7 +476,13 @@ export function LetterForm({
               </select>
             </Field>
             <Field label="Umur">
-              <input value={data.umur || ''} onChange={(e) => setField('umur', e.target.value)} placeholder="contoh: 30 tahun" className={inputCls} />
+              <input
+                value={data.umur || ''}
+                onChange={(e) => setField('umur', e.target.value)}
+                onBlur={(e) => setField('umur', formatUmur(e.target.value))}
+                placeholder="contoh: 30 THN"
+                className={inputCls}
+              />
             </Field>
             <Field label="Pekerjaan">
               <input value={data.pekerjaan || ''} onChange={(e) => setField('pekerjaan', e.target.value)} className={inputCls} />
@@ -364,7 +523,13 @@ export function LetterForm({
               <input value={data.nama || ''} onChange={(e) => setField('nama', e.target.value)} className={inputCls} />
             </Field>
             <Field label="Umur">
-              <input value={data.umur || ''} onChange={(e) => setField('umur', e.target.value)} className={inputCls} />
+              <input
+                value={data.umur || ''}
+                onChange={(e) => setField('umur', e.target.value)}
+                onBlur={(e) => setField('umur', formatUmur(e.target.value))}
+                placeholder="contoh: 30 THN"
+                className={inputCls}
+              />
             </Field>
             <Field label="Pekerjaan">
               <input value={data.pekerjaan || ''} onChange={(e) => setField('pekerjaan', e.target.value)} className={inputCls} />
@@ -450,7 +615,13 @@ export function LetterForm({
               <input value={data.namaIbu || ''} onChange={(e) => setField('namaIbu', e.target.value)} className={inputCls} />
             </Field>
             <Field label="Umur Ibu">
-              <input value={data.umurIbu || ''} onChange={(e) => setField('umurIbu', e.target.value)} className={inputCls} />
+              <input
+                value={data.umurIbu || ''}
+                onChange={(e) => setField('umurIbu', e.target.value)}
+                onBlur={(e) => setField('umurIbu', formatUmur(e.target.value))}
+                placeholder="contoh: 28 THN"
+                className={inputCls}
+              />
             </Field>
             <Field label="NIK Ibu">
               <input value={data.nikIbu || ''} onChange={(e) => setField('nikIbu', e.target.value)} className={inputCls} />
@@ -462,7 +633,13 @@ export function LetterForm({
               <input value={data.namaAyah || ''} onChange={(e) => setField('namaAyah', e.target.value)} className={inputCls} />
             </Field>
             <Field label="Umur Ayah">
-              <input value={data.umurAyah || ''} onChange={(e) => setField('umurAyah', e.target.value)} className={inputCls} />
+              <input
+                value={data.umurAyah || ''}
+                onChange={(e) => setField('umurAyah', e.target.value)}
+                onBlur={(e) => setField('umurAyah', formatUmur(e.target.value))}
+                placeholder="contoh: 30 THN"
+                className={inputCls}
+              />
             </Field>
             <Field label="NIK Ayah">
               <input value={data.nikAyah || ''} onChange={(e) => setField('nikAyah', e.target.value)} className={inputCls} />
@@ -483,10 +660,19 @@ export function LetterForm({
               <input value={data.kabKota || ''} onChange={(e) => setField('kabKota', e.target.value)} className={inputCls} />
             </Field>
             <Field label="Saksi I">
-              <input value={data.saksi1 || ''} onChange={(e) => setField('saksi1', e.target.value)} className={inputCls} />
+              <input value={data.saksi1 || ''} onChange={(e) => setField('saksi1', e.target.value)} placeholder="Nama Saksi I" className={inputCls} />
             </Field>
             <Field label="Saksi II">
-              <input value={data.saksi2 || ''} onChange={(e) => setField('saksi2', e.target.value)} className={inputCls} />
+              <input value={data.saksi2 || ''} onChange={(e) => setField('saksi2', e.target.value)} placeholder="Nama Saksi II" className={inputCls} />
+            </Field>
+            <Field label="Catatan Tambahan" className="sm:col-span-2">
+              <textarea
+                rows={2}
+                value={data.catatanTambahan || ''}
+                onChange={(e) => setField('catatanTambahan', e.target.value)}
+                placeholder="Catatan tambahan kondisi bayi, proses persalinan, atau keterangan lainnya (opsional)"
+                className={inputCls}
+              />
             </Field>
           </div>
         </div>
@@ -502,7 +688,13 @@ export function LetterForm({
               <input value={data.nama || ''} onChange={(e) => setField('nama', e.target.value)} className={inputCls} />
             </Field>
             <Field label="Umur">
-              <input value={data.umur || ''} onChange={(e) => setField('umur', e.target.value)} className={inputCls} />
+              <input
+                value={data.umur || ''}
+                onChange={(e) => setField('umur', e.target.value)}
+                onBlur={(e) => setField('umur', formatUmur(e.target.value))}
+                placeholder="contoh: 30 THN"
+                className={inputCls}
+              />
             </Field>
             <Field label="Pekerjaan">
               <input value={data.pekerjaan || ''} onChange={(e) => setField('pekerjaan', e.target.value)} className={inputCls} />
@@ -539,7 +731,13 @@ export function LetterForm({
               <input value={data.nama || ''} onChange={(e) => setField('nama', e.target.value)} className={inputCls} />
             </Field>
             <Field label="Umur">
-              <input value={data.umur || ''} onChange={(e) => setField('umur', e.target.value)} className={inputCls} />
+              <input
+                value={data.umur || ''}
+                onChange={(e) => setField('umur', e.target.value)}
+                onBlur={(e) => setField('umur', formatUmur(e.target.value))}
+                placeholder="contoh: 65 THN"
+                className={inputCls}
+              />
             </Field>
             <Field label="Jenis Kelamin">
               <select value={data.jenisKelamin || ''} onChange={(e) => setField('jenisKelamin', e.target.value)} className={inputCls}>

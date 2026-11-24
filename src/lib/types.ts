@@ -131,7 +131,16 @@ export interface Letter {
   patientName: string;
   patientRM: string;
   date: string; // tanggal surat (ISO date)
+  kop?: string; // id kop yang dipilih (al-faruq, bidan-mulyani, custom-*)
+  customKopImg?: string; // data URL gambar kop custom jika ada
   data: Record<string, string>;
   createdAt: string;
   updatedAt?: string;
+}
+
+export interface KopOption {
+  id: string;
+  name: string;
+  image?: string; // base64 / path
+  isDefault?: boolean;
 }

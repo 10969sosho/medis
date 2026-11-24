@@ -10,9 +10,10 @@ const KEYS = {
   ancRecords: 'klinik_anc',
   doctors: 'klinik_doctors',
   letters: 'klinik_letters',
+  customKop: 'klinik_custom_kop',
 };
 
-import type { Patient, Visit, Drug, QueueItem, Transaction, ANCRecord, Doctor, Letter } from './types';
+import type { Patient, Visit, Drug, QueueItem, Transaction, ANCRecord, Doctor, Letter, KopOption } from './types';
 
 // --- Seed Data ---
 const seedPatients: Patient[] = [
@@ -401,6 +402,20 @@ export const letterStore = {
   },
 };
 
+// --- Custom Kop Store ---
+export const customKopStore = {
+  getAll: (): KopOption[] => load<KopOption>(KEYS.customKop),
+  add: (kop: KopOption) => {
+    const all = load<KopOption>(KEYS.customKop);
+    all.push(kop);
+    save(KEYS.customKop, all);
+  },
+  delete: (id: string) => {
+    const all = load<KopOption>(KEYS.customKop).filter(k => k.id !== id);
+    save(KEYS.customKop, all);
+  },
+};
+
 // --- Utils ---
 export const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
 export const fmtDate = (iso: string) => new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(new Date(iso));
@@ -415,7 +430,7 @@ export const calcAge = (dob: string) => {
     const months = (now.getFullYear() - birth.getFullYear()) * 12 + now.getMonth() - birth.getMonth();
     return `${months} bulan`;
   }
-  return `${years} tahun`;
+  return `${years} THN`;
 };
 export const uid = () => Math.random().toString(36).slice(2, 10);
 export const calcEDD = (lmpDate: string) => {

@@ -38,7 +38,26 @@ function Line({ label, value }: { label: string; value?: string }) {
   );
 }
 
-function KopHeader({ kop }: { kop: 'al-faruq' | 'bidan-mulyani' }) {
+function KopHeader({
+  kop,
+  customKopImg,
+}: {
+  kop?: string;
+  customKopImg?: string;
+}) {
+  // Jika menggunakan gambar kop custom yang diunggah
+  if (customKopImg) {
+    return (
+      <div className="border-b-[3px] border-slate-900 pb-2 mb-4">
+        <img
+          src={customKopImg}
+          alt="Kop Surat"
+          className="w-full max-h-36 object-contain mx-auto"
+        />
+      </div>
+    );
+  }
+
   // Kolom kiri & kanan berukuran sama (80px) sehingga kolom teks di tengah
   // tepat berada di titik tengah lebar kertas — sejajar dengan judul surat.
   const grid = 'grid grid-cols-[80px_1fr_80px] items-center gap-x-4 border-b-[3px] border-slate-900 pb-2 mb-4 font-serif';
@@ -96,10 +115,11 @@ function KopHeader({ kop }: { kop: 'al-faruq' | 'bidan-mulyani' }) {
 export function LetterPrint({ letter }: { letter: Letter }) {
   const meta = LETTER_META[letter.type];
   const d = letter.data;
+  const effectiveKop = letter.kop || meta.kop;
 
   return (
     <div className="bg-white text-slate-900 w-full max-w-[210mm] mx-auto p-6 sm:p-8 print:p-0 print:max-w-none font-serif">
-      <KopHeader kop={meta.kop} />
+      <KopHeader kop={effectiveKop} customKopImg={letter.customKopImg} />
 
       <h1 className="text-center text-lg font-bold underline tracking-wide mb-1">
         {meta.label.toUpperCase()}
@@ -190,22 +210,31 @@ export function LetterPrint({ letter }: { letter: Letter }) {
             <Line label="Kecamatan" value={d.kecamatan} />
             <Line label="Kab/Kota" value={d.kabKota} />
           </div>
-          <div className="grid grid-cols-2 gap-6 text-[12px] mt-8">
+
+          {d.catatanTambahan && (
+            <div className="mb-4 text-[12px]">
+              <p className="font-semibold">Catatan Tambahan:</p>
+              <p className="whitespace-pre-line text-slate-700 italic mt-0.5">{d.catatanTambahan}</p>
+            </div>
+          )}
+
+          {/* Bagian Tanda Tangan dibagi 3: Saksi 1 | Saksi 2 | Penolong Persalinan */}
+          <div className="grid grid-cols-3 gap-4 text-center text-[12px] mt-8 pt-2">
             <div>
-              <p>Saksi I</p>
-              <div className="h-12" />
-              <p className="border-t border-slate-400 pt-1">..............................</p>
+              <p className="font-medium">Saksi I</p>
+              <div className="h-14" />
+              <p className="border-t border-slate-700 pt-1 font-semibold">{d.saksi1 || '..............................'}</p>
             </div>
             <div>
-              <p>Saksi II</p>
-              <div className="h-12" />
-              <p className="border-t border-slate-400 pt-1">..............................</p>
+              <p className="font-medium">Saksi II</p>
+              <div className="h-14" />
+              <p className="border-t border-slate-700 pt-1 font-semibold">{d.saksi2 || '..............................'}</p>
             </div>
-          </div>
-          <div className="mt-6 text-[12px]">
-            <p>Penolong Persalinan</p>
-            <div className="h-12" />
-            <p className="font-semibold">{d.signer}</p>
+            <div>
+              <p className="font-medium">Penolong Persalinan</p>
+              <div className="h-14" />
+              <p className="border-t border-slate-700 pt-1 font-semibold underline">{d.signer || meta.defaultSigner}</p>
+            </div>
           </div>
         </>
       )}
@@ -258,14 +287,17 @@ export function LetterPrint({ letter }: { letter: Letter }) {
         </>
       )}
 
-      <div className="flex justify-end mt-6">
-        <div className="text-center text-[12px] min-w-[220px]">
-          <p>Sidoarjo, {fmt(letter.date)}</p>
-          <p className="mt-1">{meta.signerLabel}</p>
-          <div className="h-12" />
-          <p className="font-semibold underline">{d.signer || meta.defaultSigner}</p>
+      {/* Untuk tipe selain 'lahir', tampilkan blok tanda tangan tunggal di kanan bawah */}
+      {letter.type !== 'lahir' && (
+        <div className="flex justify-end mt-6">
+          <div className="text-center text-[12px] min-w-[220px]">
+            <p>Sidoarjo, {fmt(letter.date)}</p>
+            <p className="mt-1">{meta.signerLabel}</p>
+            <div className="h-12" />
+            <p className="font-semibold underline">{d.signer || meta.defaultSigner}</p>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
