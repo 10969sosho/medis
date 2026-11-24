@@ -14,6 +14,7 @@ const KEYS = {
 };
 
 import type { Patient, Visit, Drug, QueueItem, Transaction, ANCRecord, Doctor, Letter, KopOption } from './types';
+import { api } from './api';
 
 // --- Seed Data ---
 const seedPatients: Patient[] = [
@@ -208,7 +209,163 @@ function initKey<T>(key: string, seed: T[]): void {
   if (!localStorage.getItem(key)) save(key, seed);
 }
 
+
+let isSyncing = false;
+export async function syncFromBackend(): Promise<void> {
+  if (isSyncing || typeof window === 'undefined') return;
+  isSyncing = true;
+  try {
+    const [pts, docs, dgs, vst, q, tx, anc, ltr, kps] = await Promise.allSettled([
+      api.getPatients(),
+      api.getDoctors(),
+      api.getDrugs(),
+      api.getVisits(),
+      api.getQueues(),
+      api.getTransactions(),
+      api.getAncRecords(),
+      api.getLetters(),
+      api.getCustomKops(),
+    ]);
+
+    if (pts.status === 'fulfilled' && pts.value?.length) {
+      const mapped = pts.value.map((p: any) => ({
+        id: p.id,
+        rm: p.rm,
+        name: p.name,
+        nik: p.nik || '',
+        dob: p.dob || '',
+        gender: p.gender || 'L',
+        phone: p.phone || '',
+        address: p.address || '',
+        insurance: p.insurance || 'Umum',
+        bloodType: p.blood_type || p.bloodType,
+        allergy: p.allergy || '-',
+        createdAt: p.created_at || new Date().toISOString(),
+      }));
+      save(KEYS.patients, mapped);
+    }
+
+    if (docs.status === 'fulfilled' && docs.value?.length) {
+      save(KEYS.doctors, docs.value);
+    }
+
+    if (dgs.status === 'fulfilled' && dgs.value?.length) {
+      const mapped = dgs.value.map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        category: d.category,
+        stock: d.stock,
+        minStock: d.min_stock ?? d.minStock,
+        unit: d.unit,
+        buyPrice: d.buy_price ?? d.buyPrice,
+        sellPrice: d.sell_price ?? d.sellPrice,
+        expiryDate: d.expiry_date ?? d.expiryDate,
+      }));
+      save(KEYS.drugs, mapped);
+    }
+
+    if (vst.status === 'fulfilled' && vst.value?.length) {
+      const mapped = vst.value.map((v: any) => ({
+        id: v.id,
+        patientId: v.patient_id ?? v.patientId,
+        date: v.date,
+        poli: v.poli,
+        category: v.category,
+        subCategory: v.sub_category ?? v.subCategory,
+        doctorName: v.doctor_name ?? v.doctorName,
+        subjective: v.subjective,
+        objective: typeof v.objective === 'object' ? JSON.stringify(v.objective) : v.objective,
+        assessment: v.assessment,
+        icdCode: v.icd_code ?? v.icdCode,
+        plan: v.plan,
+        prescriptions: v.prescriptions || [],
+        totalBill: v.total_bill ?? v.totalBill,
+        paymentStatus: v.payment_status ?? v.paymentStatus,
+        paymentMethod: v.payment_method ?? v.paymentMethod,
+        konsultasiFee: v.konsultasi_fee ?? v.konsultasiFee,
+        drugGlobalFee: v.drug_global_fee ?? v.drugGlobalFee,
+        drugDetailPending: v.drug_detail_pending ?? v.drugDetailPending,
+        controlDate: v.control_date ?? v.controlDate,
+        notes: v.notes,
+        detailData: v.detail_data ?? v.detailData,
+      }));
+      save(KEYS.visits, mapped);
+    }
+
+    if (q.status === 'fulfilled' && q.value?.length) {
+      const mapped = q.value.map((item: any) => ({
+        id: item.id,
+        ticketNumber: item.ticket_number ?? item.ticketNumber,
+        patientId: item.patient_id ?? item.patientId,
+        patientName: item.patient_name ?? item.patientName,
+        poli: item.poli,
+        status: item.status,
+        createdAt: item.created_at || new Date().toISOString(),
+      }));
+      save(KEYS.queue, mapped);
+    }
+
+    if (tx.status === 'fulfilled' && tx.value?.length) {
+      const mapped = tx.value.map((t: any) => ({
+        id: t.id,
+        visitId: t.visit_id ?? t.visitId,
+        patientId: t.patient_id ?? t.patientId,
+        patientName: t.patient_name ?? t.patientName,
+        date: t.date,
+        items: t.items || [],
+        total: t.total,
+        paymentMethod: t.payment_method ?? t.paymentMethod,
+        paidAmount: t.paid_amount ?? t.paidAmount,
+        change: t.change,
+        createdAt: t.created_at || t.date,
+        queueNumber: t.queue_number ?? t.queueNumber,
+        doctorName: t.doctor_name ?? t.doctorName,
+      }));
+      save(KEYS.transactions, mapped);
+    }
+
+    if (anc.status === 'fulfilled' && anc.value?.length) {
+      const mapped = anc.value.map((a: any) => ({
+        patientId: a.patient_id ?? a.patientId,
+        lmpDate: a.lmp_date ?? a.lmpDate,
+        edd: a.edd,
+        gravida: a.gravida,
+        para: a.para,
+        abortus: a.abortus,
+        visits: a.visits || [],
+      }));
+      save(KEYS.ancRecords, mapped);
+    }
+
+    if (ltr.status === 'fulfilled' && ltr.value?.length) {
+      const mapped = ltr.value.map((l: any) => ({
+        id: l.id,
+        type: l.type,
+        number: l.number,
+        patientId: l.patient_id ?? l.patientId,
+        patientName: l.patient_name ?? l.patientName,
+        patientRM: l.patient_rm ?? l.patientRM,
+        date: l.date,
+        kop: l.kop,
+        customKopImg: l.custom_kop_img ?? l.customKopImg,
+        data: l.data || {},
+        createdAt: l.created_at || new Date().toISOString(),
+      }));
+      save(KEYS.letters, mapped);
+    }
+
+    if (kps.status === 'fulfilled' && kps.value?.length) {
+      save(KEYS.customKop, kps.value);
+    }
+  } catch (err) {
+    console.warn('Backend sync warning:', err);
+  } finally {
+    isSyncing = false;
+  }
+}
+
 export function initStore(): void {
+  syncFromBackend().catch(() => {});
   initKey(KEYS.patients, seedPatients);
   initKey(KEYS.visits, seedVisits);
   initKey(KEYS.drugs, seedDrugs);
@@ -233,10 +390,12 @@ export const patientStore = {
     const all = load<Patient>(KEYS.patients);
     all.push(p);
     save(KEYS.patients, all);
+    api.savePatient(p).catch(console.error);
   },
   update: (updated: Patient) => {
     const all = load<Patient>(KEYS.patients).map(p => p.id === updated.id ? updated : p);
     save(KEYS.patients, all);
+    api.savePatient(updated).catch(console.error);
   },
   nextRM: () => {
     const all = load<Patient>(KEYS.patients);
@@ -254,10 +413,12 @@ export const visitStore = {
     const all = load<Visit>(KEYS.visits);
     all.push(v);
     save(KEYS.visits, all);
+    api.saveVisit(v).catch(console.error);
   },
   update: (updated: Visit) => {
     const all = load<Visit>(KEYS.visits).map(v => v.id === updated.id ? updated : v);
     save(KEYS.visits, all);
+    api.saveVisit(updated).catch(console.error);
   },
 };
 
@@ -269,10 +430,12 @@ export const drugStore = {
     const all = load<Drug>(KEYS.drugs);
     all.push(d);
     save(KEYS.drugs, all);
+    api.saveDrug(d).catch(console.error);
   },
   update: (updated: Drug) => {
     const all = load<Drug>(KEYS.drugs).map(d => d.id === updated.id ? updated : d);
     save(KEYS.drugs, all);
+    api.saveDrug(updated).catch(console.error);
   },
   deductStock: (drugId: string, qty: number) => {
     const all = load<Drug>(KEYS.drugs).map(d =>
@@ -299,10 +462,12 @@ export const queueStore = {
     const all = load<QueueItem>(KEYS.queue);
     all.push(q);
     save(KEYS.queue, all);
+    api.saveQueue(q).catch(console.error);
   },
   update: (updated: QueueItem) => {
     const all = load<QueueItem>(KEYS.queue).map(q => q.id === updated.id ? updated : q);
     save(KEYS.queue, all);
+    api.saveQueue(updated).catch(console.error);
   },
   nextTicket: (prefix: string) => {
     const today = new Date().toISOString().slice(0, 10);
@@ -334,6 +499,7 @@ export const transactionStore = {
     const all = load<Transaction>(KEYS.transactions);
     all.push(t);
     save(KEYS.transactions, all);
+    api.saveTransaction(t).catch(console.error);
   },
   totalToday: () => {
     const today = new Date().toISOString().slice(0, 10);
@@ -364,14 +530,17 @@ export const doctorStore = {
     const all = load<Doctor>(KEYS.doctors);
     all.push(d);
     save(KEYS.doctors, all);
+    api.saveDoctor(d).catch(console.error);
   },
   update: (updated: Doctor) => {
     const all = load<Doctor>(KEYS.doctors).map(d => d.id === updated.id ? updated : d);
     save(KEYS.doctors, all);
+    api.saveDoctor(updated).catch(console.error);
   },
   delete: (id: string) => {
     const all = load<Doctor>(KEYS.doctors).filter(d => d.id !== id);
     save(KEYS.doctors, all);
+    api.deleteDoctor(id).catch(console.error);
   },
 };
 
@@ -386,14 +555,17 @@ export const letterStore = {
     const all = load<Letter>(KEYS.letters);
     all.push(l);
     save(KEYS.letters, all);
+    api.saveLetter(l).catch(console.error);
   },
   update: (updated: Letter) => {
     const all = load<Letter>(KEYS.letters).map(l => l.id === updated.id ? updated : l);
     save(KEYS.letters, all);
+    api.saveLetter(updated).catch(console.error);
   },
   delete: (id: string) => {
     const all = load<Letter>(KEYS.letters).filter(l => l.id !== id);
     save(KEYS.letters, all);
+    api.deleteLetter(id).catch(console.error);
   },
   nextNumber: (prefix: string) => {
     const year = new Date().getFullYear();
@@ -409,10 +581,12 @@ export const customKopStore = {
     const all = load<KopOption>(KEYS.customKop);
     all.push(kop);
     save(KEYS.customKop, all);
+    api.saveCustomKop(kop).catch(console.error);
   },
   delete: (id: string) => {
     const all = load<KopOption>(KEYS.customKop).filter(k => k.id !== id);
     save(KEYS.customKop, all);
+    api.deleteCustomKop(id).catch(console.error);
   },
 };
 

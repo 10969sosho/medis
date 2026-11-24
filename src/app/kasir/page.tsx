@@ -156,7 +156,7 @@ function Invoice({
   return (
     <div
       ref={invoiceRef}
-      className="print-only bg-white text-black font-mono text-[12px] leading-tight w-full max-w-[320px] mx-auto p-2"
+      className="thermal-receipt-container bg-white text-black font-mono text-[11.5px] leading-tight w-full max-w-[320px] mx-auto p-3 shadow-sm border border-slate-100 rounded-lg"
       style={{ fontFamily: 'monospace, "Courier New", Courier' }}
     >
       {/* Header Klinik */}
@@ -413,33 +413,31 @@ export default function KasirPage() {
             size: 58mm auto;
             margin: 0;
           }
-          body {
+          html, body {
             margin: 0 !important;
             padding: 0 !important;
             background: #fff !important;
           }
-          body * {
-            visibility: hidden !important;
+          body > *:not(.thermal-receipt-container) {
+            display: none !important;
           }
-          .print-only, .print-only * {
-            visibility: visible !important;
-          }
-          .print-only {
+          .thermal-receipt-container {
+            display: block !important;
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             width: 58mm !important;
             max-width: 58mm !important;
             margin: 0 auto !important;
-            padding: 4mm 3mm !important;
+            padding: 3mm 2mm !important;
             font-size: 11px !important;
             color: #000 !important;
             background: #fff !important;
             box-sizing: border-box !important;
           }
-        }
-        @media screen {
-          .print-only { }
+          .no-print {
+            display: none !important;
+          }
         }
       `}</style>
 
