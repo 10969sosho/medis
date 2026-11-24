@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import type { Letter, Patient } from '@/lib/types';
-import { calcAge } from '@/lib/store';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import type { Letter, Patient, Doctor } from '@/lib/types';
+import { calcAge, doctorStore } from '@/lib/store';
 import { LetterMeta } from '@/lib/letterConfig';
-import { Save, User, Stethoscope } from 'lucide-react';
+import { Save, User, Stethoscope, Search, CheckCircle2, ChevronDown, X } from 'lucide-react';
 
 const inputCls =
   'w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-teal-500';
@@ -63,6 +63,27 @@ export function LetterForm({
   );
   const [data, setData] = useState<Record<string, string>>(initial?.data ?? {});
   const [patientSearch, setPatientSearch] = useState('');
+  const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
+  const patientDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Ambil daftar dokter dari doctorStore
+  const doctors = useMemo(() => {
+    return doctorStore.getAll();
+  }, []);
+
+  // Tutup dropdown ketika klik di luar area
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        patientDropdownRef.current &&
+        !patientDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsPatientDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const selectedPatient = useMemo(
     () => patients.find((p) => p.id === patientId),
@@ -138,43 +159,147 @@ export function LetterForm({
             />
           </Field>
           <Field label={`${meta.signerLabel}`}>
-            <input
-              type="text"
-              value={signer}
-              onChange={(e) => setSigner(e.target.value)}
-              className={inputCls}
-            />
+            <div className="relative">
+              <select
+                value={signer}
+                onChange={(e) => setSigner(e.target.value)}
+                className={inputCls}
+              >
+                {/* Opsi default/initial jika belum ada di list */}
+                {signer && !doctors.some((d) => d.name === signer) && (
+                  <option value={signer}>{signer}</option>
+                )}
+                {doctors.map((d) => (
+                  <option key={d.id} value={d.name}>
+                    {d.name} {d.role ? `(${d.role})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
           </Field>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Cari Pasien (nama / No RM / NIK)">
-            <input
-              type="text"
-              value={patientSearch}
-              onChange={(e) => setPatientSearch(e.target.value)}
-              placeholder="Ketik untuk mencari..."
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Pilih Pasien (opsional)">
-            <select
-              value={patientId}
-              onChange={(e) => setPatientId(e.target.value)}
-              className={inputCls}
-            >
-              <option value="">-- Tanpa data pasien --</option>
-              {patientOptions.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.rm})
-                </option>
-              ))}
-            </select>
+
+        {/* 1 Field Dropdown Search Pasien */}
+        <div className="relative" ref={patientDropdownRef}>
+          <Field label="Pasien (Cari Nama / No RM / NIK)">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                value={
+                  isPatientDropdownOpen || patientSearch
+                    ? patientSearch
+                    : selectedPatient
+                    ? `${selectedPatient.name} (${selectedPatient.rm}) — ${selectedPatient.insurance}`
+                    : ''
+                }
+                onChange={(e) => {
+                  setPatientSearch(e.target.value);
+                  if (!isPatientDropdownOpen) setIsPatientDropdownOpen(true);
+                }}
+                onFocus={() => setIsPatientDropdownOpen(true)}
+                placeholder="-- Pilih / Cari Pasien (Ketik nama, RM, NIK) --"
+                className={`w-full text-xs pl-9 pr-16 py-2.5 rounded-xl border bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
+                  selectedPatient && !isPatientDropdownOpen && !patientSearch
+                    ? 'border-teal-400 font-semibold text-teal-950 bg-teal-50/30'
+                    : 'border-slate-200 text-slate-800 placeholder-slate-400'
+                }`}
+              />
+
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                {(selectedPatient || patientSearch) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPatientId('');
+                      setPatientSearch('');
+                      setIsPatientDropdownOpen(true);
+                    }}
+                    className="p-1 text-slate-400 hover:text-red-600 rounded-lg hover:bg-slate-100 transition-colors"
+                    title="Hapus / Cari Ulang"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsPatientDropdownOpen((prev) => !prev)}
+                  className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+                  title="Buka / Tutup Daftar"
+                >
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                      isPatientDropdownOpen ? 'rotate-180 text-teal-600' : ''
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Dropdown Popover List Pasien */}
+              {isPatientDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 max-h-64 overflow-y-auto divide-y divide-slate-100 animate-in fade-in-50 duration-150">
+                  <div
+                    onClick={() => {
+                      setPatientId('');
+                      setPatientSearch('');
+                      setIsPatientDropdownOpen(false);
+                    }}
+                    className="px-4 py-2 text-xs text-slate-400 hover:bg-slate-50 cursor-pointer italic"
+                  >
+                    -- Tanpa data pasien (isi manual) --
+                  </div>
+                  {patientOptions.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400">
+                      Pasien tidak ditemukan dengan kata kunci &quot;{patientSearch}&quot;
+                    </div>
+                  ) : (
+                    patientOptions.map((p) => {
+                      const isSelected = p.id === patientId;
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => {
+                            setPatientId(p.id);
+                            setPatientSearch('');
+                            setIsPatientDropdownOpen(false);
+                          }}
+                          className={`px-4 py-2.5 text-xs cursor-pointer transition-colors flex items-center justify-between gap-3 ${
+                            isSelected
+                              ? 'bg-teal-50 text-teal-900 font-semibold'
+                              : 'hover:bg-slate-50 text-slate-800'
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-slate-900 truncate">
+                                {p.name}
+                              </span>
+                              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 shrink-0">
+                                {p.rm}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                              NIK: {p.nik} · {calcAge(p.dob)} · {p.gender === 'P' ? 'Perempuan' : 'Laki-Laki'} · {p.insurance}
+                            </p>
+                          </div>
+                          {isSelected && (
+                            <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
           </Field>
         </div>
+
         {selectedPatient && (
-          <p className="text-[11px] text-slate-500">
-            Terpilih: <strong>{selectedPatient.name}</strong> · {selectedPatient.rm} ·{' '}
-            {calcAge(selectedPatient.dob)}
+          <p className="text-[11px] text-teal-700 bg-teal-50/70 border border-teal-200/60 rounded-xl px-3 py-1.5 flex items-center justify-between">
+            <span>
+              Terpilih: <strong>{selectedPatient.name}</strong> · {selectedPatient.rm} · NIK: {selectedPatient.nik} · {calcAge(selectedPatient.dob)}
+            </span>
           </p>
         )}
       </div>
