@@ -83,6 +83,8 @@ export interface Transaction {
   paidAmount: number;
   change: number;
   createdAt: string;
+  queueNumber?: string;
+  doctorName?: string;
 }
 
 export interface ANCRecord {

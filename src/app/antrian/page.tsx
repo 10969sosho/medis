@@ -406,6 +406,14 @@ export default function AntrianPage() {
 
                           {item.status === 'called' && (
                             <>
+                              <button
+                                onClick={() => handleCall(item)}
+                                className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-xl text-xs font-medium transition-colors shadow-sm"
+                                title="Panggil Ulang Antrian"
+                              >
+                                <Volume2 size={13} />
+                                Panggil Ulang
+                              </button>
                               <Link
                                 href={`${rmPoliPath(item.poli)}?patientId=${item.patientId}`}
                                 onClick={() => updateStatus(item, 'in-progress')}

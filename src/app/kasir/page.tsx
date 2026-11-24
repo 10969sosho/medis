@@ -7,6 +7,7 @@ import {
   patientStore,
   drugStore,
   transactionStore,
+  queueStore,
   idr,
   uid,
 } from '@/lib/store';
@@ -32,14 +33,16 @@ import {
 
 // ─── constants ───────────────────────────────────────────────────────────────
 const KONSULTASI_FEE = 0;
-const CLINIC_NAME = 'Klinik Pratama Sehat Bersama';
-const CLINIC_ADDR = 'Jl. Kesehatan No. 10, Bandung 40115';
-const CLINIC_PHONE = '(022) 123-4567';
+const CLINIC_NAME = 'BIDAN YANI H. RUDI SST. Bd';
+const CLINIC_ADDR = 'PERUM Kedungturi Permai 2 BLOK U 23';
+const CLINIC_PHONE = 'WA 081331136178 / layanan klinik 081390974100';
 
 type PayMethod = 'Tunai' | 'QRIS' | 'BPJS' | 'Asuransi';
 
 interface BillLine {
   label: string;
+  qty?: number;
+  unitPrice?: number;
   amount: number;
 }
 
@@ -58,17 +61,34 @@ function buildBillLines(visit: Visit, konsultasiFee: number): BillLine[] {
   );
   const originalKonsultasi = visit.konsultasiFee ?? 0;
   const tindakan = Math.max(0, visit.totalBill - originalKonsultasi - drugsTotal);
-  const lines: BillLine[] = [{ label: 'Jasa Konsultasi', amount: konsultasiFee }];
-  if (tindakan > 0) lines.push({ label: 'Tindakan Medis', amount: tindakan });
-  if ((!visit.prescriptions || visit.prescriptions.length === 0) && (visit.drugGlobalFee || 0) > 0) {
-    lines.push({ label: 'Obat (belum dirinci)', amount: visit.drugGlobalFee as number });
+  const lines: BillLine[] = [];
+
+  if (konsultasiFee > 0) {
+    lines.push({ label: 'Jasa Konsultasi', qty: 1, unitPrice: konsultasiFee, amount: konsultasiFee });
   }
+
+  if (tindakan > 0) {
+    lines.push({ label: visit.subCategory || 'Tindakan Medis', qty: 1, unitPrice: tindakan, amount: tindakan });
+  }
+
+  if ((!visit.prescriptions || visit.prescriptions.length === 0) && (visit.drugGlobalFee || 0) > 0) {
+    const fee = visit.drugGlobalFee as number;
+    lines.push({ label: 'Obat-obatan', qty: 1, unitPrice: fee, amount: fee });
+  }
+
   visit.prescriptions.forEach((p) => {
     lines.push({
-      label: `${p.drugName} × ${p.quantity} ${p.unit}`,
+      label: p.drugName,
+      qty: p.quantity,
+      unitPrice: p.pricePerUnit,
       amount: p.quantity * p.pricePerUnit,
     });
   });
+
+  if (lines.length === 0) {
+    lines.push({ label: 'Biaya Pemeriksaan', qty: 1, unitPrice: visit.totalBill, amount: visit.totalBill });
+  }
+
   return lines;
 }
 
@@ -95,7 +115,24 @@ function PayIcon({ method }: { method: PayMethod }) {
   return <CreditCard className="w-4 h-4" />;
 }
 
-// ─── Invoice Component (for modal + print) ────────────────────────────────────
+// ─── invoice date & time helpers ─────────────────────────────────────────────
+function fmtReceiptDate(iso: string) {
+  const d = new Date(iso);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function fmtReceiptTime(iso: string) {
+  const d = new Date(iso);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${hh}:${min}:${ss}`;
+}
+
+// ─── Invoice Component (for thermal receipt 58mm/80mm) ──────────────────────
 function Invoice({
   transaction,
   patientName,
@@ -109,81 +146,97 @@ function Invoice({
   poli: string;
   invoiceRef: React.RefObject<HTMLDivElement | null>;
 }) {
+  const queueNum = transaction.queueNumber || '-';
+  const doctor = transaction.doctorName || 'bidan yani sst. bd';
+  const payLabel =
+    transaction.paymentMethod === 'Tunai'
+      ? 'Bayar (Cash)'
+      : `Bayar (${transaction.paymentMethod})`;
+
   return (
     <div
       ref={invoiceRef}
-      className="print-only bg-white font-mono text-[13px] text-slate-800 w-full"
+      className="print-only bg-white text-black font-mono text-[12px] leading-tight w-full max-w-[320px] mx-auto p-2"
+      style={{ fontFamily: 'monospace, "Courier New", Courier' }}
     >
-      {/* Header */}
-      <div className="text-center border-b border-dashed border-slate-300 pb-3 mb-3">
-        <p className="font-bold text-base">{CLINIC_NAME}</p>
-        <p className="text-xs text-slate-500">{CLINIC_ADDR}</p>
-        <p className="text-xs text-slate-500">Telp: {CLINIC_PHONE}</p>
+      {/* Header Klinik */}
+      <div className="text-center pb-2">
+        <p className="font-bold text-sm tracking-wide uppercase">{CLINIC_NAME}</p>
+        <p className="text-[11px] leading-snug mt-0.5">{CLINIC_ADDR}</p>
+        <p className="text-[10px] leading-snug mt-0.5">{CLINIC_PHONE}</p>
+        {/* Nomor antrian hari itu di bawah nomor telepon */}
+        <p className="text-xs font-bold tracking-widest mt-1">
+          {queueNum}
+        </p>
       </div>
 
-      {/* Invoice meta */}
-      <div className="space-y-0.5 text-xs mb-3">
-        <div className="flex justify-between">
-          <span className="text-slate-500">No. Invoice</span>
-          <span className="font-semibold">{transaction.id}</span>
+      {/* Garis putus-putus pembatas */}
+      <div className="border-t border-dashed border-black my-1" />
+
+      {/* Tanggal, Jam, Dokter, No Antrian */}
+      <div className="text-[11px] py-1 flex justify-between items-start gap-2">
+        <div>
+          <div>{fmtReceiptDate(transaction.createdAt || transaction.date)}</div>
+          <div>{fmtReceiptTime(transaction.createdAt || transaction.date)}</div>
+          <div className="font-semibold">{queueNum}</div>
         </div>
-        <div className="flex justify-between">
-          <span className="text-slate-500">Tanggal</span>
-          <span>{fmtDateShort(transaction.date)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-slate-500">Pasien</span>
-          <span className="font-semibold">{patientName}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-slate-500">No. RM</span>
-          <span>{patientRM}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-slate-500">Poli</span>
-          <span>{poli}</span>
+        <div className="text-right uppercase">
+          <div className="font-semibold">{doctor}</div>
+          <div className="text-[10px] text-slate-600">{patientName}</div>
         </div>
       </div>
 
-      {/* Items */}
-      <div className="border-t border-dashed border-slate-300 pt-3 mb-3 space-y-1">
-        {transaction.items.map((item, i) => (
-          <div key={i} className="flex justify-between text-xs">
-            <span className="text-slate-700 flex-1 pr-2">{item.label}</span>
-            <span className="whitespace-nowrap">{idr(item.amount)}</span>
-          </div>
-        ))}
-      </div>
+      {/* Garis putus-putus pembatas */}
+      <div className="border-t border-dashed border-black my-1" />
 
-      {/* Totals */}
-      <div className="border-t border-dashed border-slate-300 pt-3 mb-3 space-y-1">
-        <div className="flex justify-between font-bold">
-          <span>TOTAL</span>
-          <span>{idr(transaction.total)}</span>
-        </div>
-        <div className="flex justify-between text-xs text-slate-500">
-          <span>Metode Bayar</span>
-          <span>{transaction.paymentMethod}</span>
-        </div>
-        {transaction.paymentMethod === 'Tunai' && (
-          <>
-            <div className="flex justify-between text-xs text-slate-500">
-              <span>Dibayar</span>
-              <span>{idr(transaction.paidAmount)}</span>
+      {/* Daftar Item / Layanan & Obat */}
+      <div className="py-1 space-y-1 text-[11px]">
+        {transaction.items.map((item: any, i) => {
+          const qty = item.qty || 1;
+          const unitPrice = item.unitPrice || item.amount;
+          return (
+            <div key={i} className="space-y-0.5">
+              <div className="font-medium truncate">{item.label}</div>
+              <div className="flex justify-between items-center text-slate-800">
+                <span>
+                  {qty} X {unitPrice.toLocaleString('id-ID')}
+                </span>
+                <span className="font-semibold">
+                  Rp {item.amount.toLocaleString('id-ID')}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between text-xs text-slate-500">
-              <span>Kembalian</span>
-              <span>{idr(transaction.change)}</span>
-            </div>
-          </>
-        )}
+          );
+        })}
       </div>
 
-      {/* Footer */}
-      <div className="border-t border-dashed border-slate-300 pt-3 text-center text-xs text-slate-500 space-y-0.5">
-        <p>Terima kasih atas kunjungan Anda.</p>
-        <p>Semoga lekas sembuh! 🌿</p>
-        <p className="mt-1 text-[10px]">{fmtDateTime(transaction.createdAt)}</p>
+      {/* Garis putus-putus pembatas */}
+      <div className="border-t border-dashed border-black my-1" />
+
+      {/* Ringkasan Total, Bayar, Kembali */}
+      <div className="py-1 text-[11px] space-y-0.5 font-medium">
+        <div className="flex justify-between font-bold text-xs">
+          <span>Total</span>
+          <span>Rp {transaction.total.toLocaleString('id-ID')}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>{payLabel}</span>
+          <span>Rp {transaction.paidAmount.toLocaleString('id-ID')}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Kembali</span>
+          <span>Rp {transaction.change.toLocaleString('id-ID')}</span>
+        </div>
+      </div>
+
+      {/* Garis putus-putus pembatas */}
+      <div className="border-t border-dashed border-black my-2" />
+
+      {/* Pesan Penutup Sesuai Gambar */}
+      <div className="text-center text-[10.5px] leading-tight space-y-1 pt-1 pb-2">
+        <p className="font-medium">Semoga Lekas Sembuh Sehat Selalu</p>
+        <p className="font-medium">dan barokah</p>
+        <p className="mt-1">Terimakasih atas kunjungan anda</p>
       </div>
     </div>
   );
@@ -284,18 +337,24 @@ export default function KasirPage() {
         : calculatedTotal;
     const change = Math.max(0, paid - calculatedTotal);
 
+    // Ambil nomor antrian hari ini untuk pasien ini (reset per hari)
+    const patientQueue = queueStore.getQueueForPatientToday(payVisit.patientId);
+    const queueNumber = patientQueue ? patientQueue.ticketNumber : `A-${String(queueStore.getDailySequenceToday() + 1).padStart(2, '0')}`;
+
     const tx: Transaction = {
       id: `INV-${Date.now()}`,
       visitId: payVisit.id,
       patientId: payVisit.patientId,
       patientName: payPatientName,
       date: new Date().toISOString(),
-      items: billLines.map((b) => ({ label: b.label, amount: b.amount })),
+      items: billLines.map((b) => ({ label: b.label, qty: b.qty, unitPrice: b.unitPrice, amount: b.amount } as any)),
       total: calculatedTotal,
       paymentMethod: payMethod,
       paidAmount: paid,
       change,
       createdAt: new Date().toISOString(),
+      queueNumber,
+      doctorName: payVisit.doctorName || 'bidan yani sst. bd',
     };
 
     // Save konsultasi fee to visit
@@ -313,7 +372,7 @@ export default function KasirPage() {
     // reload data
     loadData();
 
-    // close payment modal, open success modal
+    // close payment modal, open success modal and trigger direct print
     const pv = payVisit;
     setPayVisit(null);
     setSuccessData({
@@ -322,6 +381,11 @@ export default function KasirPage() {
       patientName: payPatientName,
       patientRM: payPatientRM,
     });
+
+    // Auto trigger print dialog
+    setTimeout(() => {
+      window.print();
+    }, 250);
   }
 
   // ── print ──
@@ -345,14 +409,33 @@ export default function KasirPage() {
       {/* ── Print-only global style ── */}
       <style>{`
         @media print {
-          body * { visibility: hidden !important; }
-          .print-only, .print-only * { visibility: visible !important; }
+          @page {
+            size: 58mm auto;
+            margin: 0;
+          }
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+          }
+          body * {
+            visibility: hidden !important;
+          }
+          .print-only, .print-only * {
+            visibility: visible !important;
+          }
           .print-only {
-            position: fixed !important;
-            left: 0; top: 0;
-            width: 80mm;
-            padding: 12px;
-            font-size: 12px;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 58mm !important;
+            max-width: 58mm !important;
+            margin: 0 auto !important;
+            padding: 4mm 3mm !important;
+            font-size: 11px !important;
+            color: #000 !important;
+            background: #fff !important;
+            box-sizing: border-box !important;
           }
         }
         @media screen {
@@ -585,6 +668,9 @@ export default function KasirPage() {
                         <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-widest">
                           Status
                         </th>
+                        <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-widest">
+                          Aksi
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -622,6 +708,39 @@ export default function KasirPage() {
                               <span className="inline rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-700">
                                 ✓ Lunas
                               </span>
+                            </td>
+                            <td className="px-5 py-3 text-right">
+                              <button
+                                onClick={() => {
+                                  const v = visitStore.getAll().find((vis) => vis.id === tx.visitId) || {
+                                    id: tx.visitId,
+                                    patientId: tx.patientId,
+                                    date: tx.date,
+                                    poli: 'Umum',
+                                    doctorName: tx.doctorName || 'bidan yani sst. bd',
+                                    subjective: '',
+                                    objective: '',
+                                    assessment: '',
+                                    icdCode: '',
+                                    plan: '',
+                                    prescriptions: [],
+                                    totalBill: tx.total,
+                                    paymentStatus: 'paid',
+                                  };
+                                  const p = patientStore.get(tx.patientId);
+                                  setSuccessData({
+                                    visit: v,
+                                    transaction: tx,
+                                    patientName: tx.patientName,
+                                    patientRM: p?.rm || '-',
+                                  });
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
+                                title="Cetak Ulang Struk"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                                Struk
+                              </button>
                             </td>
                           </tr>
                         );

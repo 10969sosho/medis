@@ -309,6 +309,17 @@ export const queueStore = {
       .filter(q => q.createdAt.startsWith(today) && q.ticketNumber.startsWith(prefix));
     return `${prefix}-${String(todayItems.length + 1).padStart(2, '0')}`;
   },
+  getQueueForPatientToday: (patientId: string) => {
+    const today = new Date().toISOString().slice(0, 10);
+    return load<QueueItem>(KEYS.queue)
+      .filter(q => q.patientId === patientId && q.createdAt.startsWith(today))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  },
+  getDailySequenceToday: () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const todayItems = load<QueueItem>(KEYS.queue).filter(q => q.createdAt.startsWith(today));
+    return todayItems.length;
+  },
 };
 
 // --- Transactions ---
